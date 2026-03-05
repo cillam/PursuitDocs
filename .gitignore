@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Chroma / Vector store
+chroma_db/
+*.chroma
+
+# LangGraph
+.langgraph/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.next/
+out/
+
+# Build outputs
+*.zip
+*.tar.gz
+
+# Logs
+*.log
+logs/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secrets — never commit
+**/secrets/
+*.key
+*.secret
+
+# Large data files (download locally, don't commit)
+data/test_rfps/*.pdf
+data/pcaob_standards/*.pdf
+
+PursuitDocs_Project_Plan.md
+PursuitDocs_Project_Log.md

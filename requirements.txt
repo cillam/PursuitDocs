@@ -1,0 +1,21 @@
+# LangChain / LangGraph
+langchain
+langgraph
+langchain-anthropic
+langchain-community
+langgraph-cli
+
+# Vector store
+chromadb
+
+# PDF parsing
+pdfplumber
+
+# LLM
+anthropic
+
+# Data handling
+pydantic
+
+# Evaluation
+pandas

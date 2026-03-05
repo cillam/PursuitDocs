@@ -1,0 +1,87 @@
+{
+  "firm": {
+    "firm_id": 99999,
+    "legal_name": "Fakerson, Madeup & Totallyriel LLP",
+    "other_name": "FMT LLP",
+    "country": "United States",
+    "headquarters_city": "Fictionville",
+    "headquarters_state": "California",
+    "founded": 2005,
+    "employee_count": 150,
+    "partner_count": 12,
+    "manager_count": 30,
+    "licensed_states": "All 50 U.S. states and the District of Columbia"
+  },
+  "offices": [
+    {
+      "city": "Fictionville",
+      "state": "California",
+      "country": "United States",
+      "is_headquarters": true,
+      "issues_audit_reports": true
+    },
+    {
+      "city": "Nowheresburg",
+      "state": "Texas",
+      "country": "United States",
+      "is_headquarters": false,
+      "issues_audit_reports": false
+    },
+    {
+      "city": "Inventedton",
+      "state": "New York",
+      "country": "United States",
+      "is_headquarters": false,
+      "issues_audit_reports": false
+    },
+    {
+      "city": "Pretendville",
+      "state": "Illinois",
+      "country": "United States",
+      "is_headquarters": false,
+      "issues_audit_reports": false
+    }
+  ],
+  "engagement_team": {
+    "_note": "All engagement team fields are template placeholders to be filled per engagement.",
+    "engagement_partner": {
+      "first_name": "[Engagement Partner First Name]",
+      "middle_name": "[Engagement Partner Middle Name]",
+      "last_name": "[Engagement Partner Last Name]",
+      "suffix": "[Engagement Partner Suffix]",
+      "partner_id": "[Partner ID]",
+      "other_ids": "[Previously Reported Partner ID(s)]"
+    },
+    "secondary_engagement_partner": {
+      "first_name": "[Secondary Partner First Name]",
+      "middle_name": "[Secondary Partner Middle Name]",
+      "last_name": "[Secondary Partner Last Name]",
+      "suffix": "[Secondary Partner Suffix]",
+      "partner_id": "[Secondary Partner ID]",
+      "other_ids": "[Secondary Previously Reported Partner ID(s)]"
+    }
+  },
+  "description": "Fakerson, Madeup & Totallyriel LLP (doing business as FMT LLP) is a mid-size, PCAOB-registered public accounting firm headquartered in Fictionville, California. The firm specializes in audit and advisory services for technology companies, with additional expertise in cybersecurity compliance, privacy audits, and SOC reporting.",
+  "service_lines": [
+    "Financial Statement Audits (public and private companies)",
+    "SOC 1 / SOC 2 / SOC 3 Reporting",
+    "Cybersecurity and Privacy Audits",
+    "IT Compliance and Risk Advisory",
+    "Internal Audit Co-sourcing",
+    "Tax Compliance and Advisory"
+  ],
+  "industry_focus": [
+    "Technology (SaaS, cloud infrastructure, fintech)",
+    "Life Sciences",
+    "Professional Services",
+    "Government and Nonprofit"
+  ],
+  "certifications_and_affiliations": [
+    "PCAOB Registered (Firm ID: 99999)",
+    "AICPA Member Firm",
+    "AICPA Peer Review Rating: Pass (most recent review: [Year])",
+    "Center for Audit Quality (CAQ) Member"
+  ],
+  "quality_control": "FMT LLP maintains a system of quality control in accordance with PCAOB standards and AICPA professional standards. The firm undergoes triennial peer review and has received a Pass rating on every review since its founding. The firm has not been the subject of any PCAOB disciplinary proceedings.",
+  "_disclaimer": "This is a fictional firm created for the PursuitDocs project. Any resemblance to actual firms is entirely coincidental and unintentional."
+}
