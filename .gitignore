@@ -67,7 +67,9 @@ htmlcov/
 
 # Large data files (download locally, don't commit)
 data/test_rfps/*.pdf
-data/pcaob_standards/*.pdf
+data/pcaob_content/bulletins
+data/pcaob_content/spotlights
+data/pcaob_content/standards
 
 PursuitDocs_Project_Plan.md
 PursuitDocs_Project_Log.md
