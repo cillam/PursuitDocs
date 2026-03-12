@@ -70,6 +70,6 @@ data/test_rfps/*.pdf
 data/pcaob_content/bulletins
 data/pcaob_content/spotlights
 data/pcaob_content/standards
-
+data/pcaob_content/rules
 PursuitDocs_Project_Plan.md
 PursuitDocs_Project_Log.md

@@ -5,7 +5,7 @@ An AI-powered multi-agent system that automates the audit proposal letter proces
 ## How It Works
 
 1. **Upload an RFP** — Drop in a public RFP for audit services (PDF)
-2. **Parser** — Extracts the text from the PDF, then uses an LLM to pull out the four things the drafter needs: proposal instructions, purpose/services requested, entity background, and addressee
+2. **Parser** — Extracts the text from the PDF, then uses an LLM to pull out the five things the drafter needs: proposal instructions, purpose/services requested, entity background, addressee, and an overall summary
 3. **Drafter Agent** — Generates a proposal letter pulling from the parsed RFP, PCAOB independence standards, and the firm profile
 4. **Reviewer Agent** — Scans the draft for independence concerns, flags issues with PCAOB citations and suggested alternatives
 5. **Revision Loop** — The drafter revises based on findings, the reviewer checks again (max 3 iterations)
@@ -37,7 +37,7 @@ RFP (PDF upload)
          ▼
 ┌──────────────────┐
 │   Parser (LLM)    │── Extracts: instructions, purpose,
-│                    │   background, addressee
+│                    │   background, addressee, summary
 └────────┬─────────┘
          │
          ▼
@@ -108,11 +108,18 @@ pursuitdocs/
 │   ├── package.json
 │   └── vite.config.js
 ├── data_processing/
-│   ├── ingest_pcaob.py            # PCAOB standards ingestion into Chroma
+│   ├── scrape_pcaob.py            # Scrapes PCAOB standards, rules, bulletins; downloads spotlight PDF
+│   ├── validate_pcaob.py          # Data validation and structure visualization for scraped content
+│   ├── ingest_pcaob.py            # PCAOB content ingestion into Chroma
 │   └── create_vectorstore.py      # Chroma database creation
 ├── data/
 │   ├── firm_profile.json          # Fake firm profile (PCAOB data structure)
-│   ├── pcaob_standards/           # PCAOB independence standards (RAG source)
+│   ├── pcaob_content/             # Scraped PCAOB content (RAG source)
+│   │   ├── index.json             # Master index of all content
+│   │   ├── standards/             # Auditing standards (AS 1000–1305)
+│   │   ├── rules/                 # Ethics & independence rules (Rule 3501–3526)
+│   │   ├── bulletins/             # Investor bulletins
+│   │   └── spotlights/            # PCAOB staff spotlights
 │   └── test_rfps/                 # Public RFPs for testing
 ├── evaluation/
 │   ├── synthetic_proposals/       # Annotated synthetic proposals for eval
@@ -124,18 +131,24 @@ pursuitdocs/
 
 ## Knowledge Base
 
-- **PCAOB Independence Standards** — Publicly available guidelines used by both the drafter (to write compliantly) and the reviewer (to flag violations)
+- **PCAOB Auditing Standards** — General auditing standards (AS 1000–1305) covering auditor responsibilities, audit risk, evidence, supervision, documentation, engagement quality review, and audit committee communications. Used by the drafter for completeness and by the reviewer for context.
+- **PCAOB Ethics & Independence Rules** — Rules 3501–3526 covering auditor independence, contingent fees, tax services, audit committee pre-approval, and communication requirements. The core reference for the reviewer agent.
+- **PCAOB Spotlights** — Staff publications highlighting real-world inspection observations, including the Auditor Independence Spotlight with common deficiencies, applicable standards, and good practices.
+- **Investor Bulletins** — PCAOB publications on auditor professional responsibilities and ethics aimed at investors and audit committees.
 - **Firm Profile** — A fictional mid-size audit firm (Fakerson, Madeup & Totallyriel LLP) modeled after the PCAOB AuditorSearch data dictionary
 - **RFPs** — Real, publicly available RFPs from government agencies and municipalities requesting audit services
 
+All PCAOB content is scraped, structured as JSON with section hierarchy and footnote references, and indexed in a master `index.json` manifest.
+
 ## Parser Output
 
-The parser extracts four fields from each RFP:
+The parser extracts five fields from each RFP:
 
 - **Proposal Instructions** — How the proposal should be formatted and what to include
 - **Purpose / Services Requested** — What services they need and for what entity
 - **Background** — Description of the requesting entity (size, budget, structure, etc.)
 - **Addressee** — Who the proposal should be directed to (name, title, address)
+- **Summary** — High-level overview of the RFP, giving the drafter quick orientation on tone and emphasis
 
 The parser uses LLM-based extraction rather than keyword matching or regex because government RFPs have no standard format. One RFP might label a section "Company Background," another might call it "Organization Description," and a third might bury the same information in a paragraph with no heading at all. The LLM extracts by meaning, which makes the parser robust to these variations without needing rules for every possible format.
 

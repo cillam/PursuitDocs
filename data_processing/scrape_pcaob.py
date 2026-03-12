@@ -1,14 +1,17 @@
 import requests
 from bs4 import BeautifulSoup, NavigableString
+import pdfplumber
 import json
 import os
 import re
 import time
+import tempfile
 from datetime import datetime
 
 
 to_scrape = ["https://pcaobus.org/oversight/standards/auditing-standards", 
              "https://pcaobus.org/about/rules-rulemaking/rules/section_3", 
+             "https://assets.pcaobus.org/pcaob-dev/docs/default-source/documents/auditor-independence-spotlight.pdf", 
              "https://pcaobus.org/resources/information-for-investors/investor-advisories/investor-bulletin--the-importance-of-auditor-professional-responsibilities-and-ethics"
              ]
 
@@ -17,6 +20,7 @@ REQUEST_DELAY = 1
 
 BASE_DIR = os.path.join("..", "data", "pcaob_content")
 STANDARDS_DIR = os.path.join(BASE_DIR, "standards")
+RULES_DIR = os.path.join(BASE_DIR, "rules")
 BULLETINS_DIR = os.path.join(BASE_DIR, "bulletins")
 SPOTLIGHTS_DIR = os.path.join(BASE_DIR, "spotlights")
 
@@ -33,7 +37,7 @@ INCLUDED_RULES = {
 
 
 def setup_directories():
-    for directory in [STANDARDS_DIR, BULLETINS_DIR, SPOTLIGHTS_DIR]:
+    for directory in [STANDARDS_DIR, RULES_DIR, BULLETINS_DIR, SPOTLIGHTS_DIR]:
         os.makedirs(directory, exist_ok=True)
 
 
@@ -83,6 +87,162 @@ def scrape_pcaob_standards_index(url: str):
                 })
 
     return results
+
+
+def format_table(table: list) -> str:
+    """Format a pdfplumber table (list of rows) into readable text."""
+    if not table or len(table) < 2:
+        return ""
+
+    rows = []
+    for row in table:
+        # Clean up each cell
+        cleaned = []
+        for cell in row:
+            if cell is None:
+                cleaned.append("")
+            else:
+                # Collapse whitespace within cells
+                cleaned.append(re.sub(r"\s+", " ", cell).strip())
+        rows.append(cleaned)
+
+    # Format as "Header1 | Header2" followed by "Value1 | Value2"
+    lines = []
+    for row in rows:
+        lines.append(" | ".join(row))
+
+    return "\n".join(lines)
+
+
+def parse_pdf_content(url: str):
+    """Download a PDF, extract text with pdfplumber, delete the PDF."""
+    r = requests.get(url, headers=HEADERS)
+    r.raise_for_status()
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+    tmp.write(r.content)
+    tmp.close()
+
+    try:
+        # Extract text and tables per page
+        page_texts = {}
+        page_tables = {}
+        with pdfplumber.open(tmp.name) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text()
+                if text:
+                    page_texts[page.page_number] = text
+
+                tables = page.extract_tables()
+                if tables:
+                    page_tables[page.page_number] = tables
+
+        filename = url.split("/")[-1].split("?")[0]
+        title = filename.replace(".pdf", "").replace("-", " ").title()
+
+        # TOC structure for the Auditor Independence Spotlight
+        # TODO: Replace with font-based heading detection for general use
+        toc = [
+            {"heading": "Overview", "page": 3, "parent": None, "level": 1},
+            {"heading": "Auditor Independence: Importance and Recent Trends", "page": 3, "parent": None, "level": 1},
+            {"heading": "PCAOB Inspection Procedures Related to Independence", "page": 6, "parent": None, "level": 1},
+            {"heading": "Focus Areas", "page": 6, "parent": "PCAOB Inspection Procedures Related to Independence", "level": 2},
+            {"heading": "Inspection Observations Related to Independence", "page": 8, "parent": None, "level": 1},
+            {"heading": "Audit Committee Pre-Approval of Services/Communication With the Audit Committee", "page": 8, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Independence Representations/Personal Independence Compliance Testing", "page": 11, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Prohibited Financial Relationships", "page": 13, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Permissibility of Non-Audit and Tax Services", "page": 15, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Business and Employment Relationships", "page": 17, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Indemnification Clauses", "page": 19, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Independence Policies", "page": 20, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Partner Rotation", "page": 22, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Restricted Entity List", "page": 23, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Contingent Fees", "page": 24, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Mutual Interest - Unpaid Fees", "page": 24, "parent": "Inspection Observations Related to Independence", "level": 2},
+            {"heading": "Good Practices", "page": 26, "parent": None, "level": 1},
+            {"heading": "Reminders for Auditors", "page": 27, "parent": None, "level": 1},
+            {"heading": "Audit Committee Considerations", "page": 28, "parent": None, "level": 1},
+            {"heading": "Appendix: PCAOB Inspection Categories", "page": 29, "parent": None, "level": 1},
+            {"heading": "Global Network Firm (GNF)", "page": 29, "parent": "Appendix: PCAOB Inspection Categories", "level": 2},
+            {"heading": "Non-Affiliate Firm (NAF)", "page": 29, "parent": "Appendix: PCAOB Inspection Categories", "level": 2},
+            {"heading": "Broker-Dealer Firms", "page": 29, "parent": "Appendix: PCAOB Inspection Categories", "level": 2},
+        ]
+
+        max_page = max(page_texts.keys()) if page_texts else 0
+
+        # Build sections by extracting text between each TOC entry's page and the next
+        sections = []
+        for i, entry in enumerate(toc):
+            start_page = entry["page"]
+
+            # End page is the page before the next section starts (or last page)
+            if i + 1 < len(toc):
+                end_page = toc[i + 1]["page"]
+                # If next section starts on same page, they share the page
+                if end_page == start_page:
+                    end_page = start_page
+                else:
+                    end_page = end_page - 1
+            else:
+                end_page = max_page
+
+            # Collect text from the page range
+            section_text_parts = []
+            for pg in range(start_page, end_page + 1):
+                if pg in page_texts:
+                    section_text_parts.append(page_texts[pg])
+
+            full_section_text = "\n\n".join(section_text_parts).strip()
+
+            # Try to isolate just this section's text when sharing a page
+            # by finding the heading in the text and taking from there
+            heading = entry["heading"]
+            if full_section_text and heading in full_section_text:
+                idx = full_section_text.index(heading)
+                # If there's a next section on the same end page, cut at that heading
+                if i + 1 < len(toc) and toc[i + 1]["page"] <= end_page:
+                    next_heading = toc[i + 1]["heading"]
+                    if next_heading in full_section_text[idx + len(heading):]:
+                        next_idx = full_section_text.index(next_heading, idx + len(heading))
+                        full_section_text = full_section_text[idx + len(heading):next_idx].strip()
+                    else:
+                        full_section_text = full_section_text[idx + len(heading):].strip()
+                else:
+                    full_section_text = full_section_text[idx + len(heading):].strip()
+
+            # Clean up whitespace
+            full_section_text = re.sub(r"\s+", " ", full_section_text).strip()
+
+            # Collect tables from the page range
+            section_tables = []
+            for pg in range(start_page, end_page + 1):
+                if pg in page_tables:
+                    for table in page_tables[pg]:
+                        formatted = format_table(table)
+                        if formatted:
+                            section_tables.append(formatted)
+
+            sections.append({
+                "heading": heading,
+                "parent": entry["parent"],
+                "level": entry["level"],
+                "content": full_section_text,
+                "tables": section_tables,
+                "footnote_refs": [],
+            })
+
+        return {
+            "metadata": {
+                "title": title,
+                "url": url,
+                "document_type": "spotlight",
+                "scraped_at": datetime.now().isoformat(),
+            },
+            "footnotes": {},
+            "content": sections,
+        }
+    finally:
+        os.unlink(tmp.name)
 
 
 def parse_html_content(url: str, index_metadata: dict = None):
@@ -143,9 +303,10 @@ def parse_html_content(url: str, index_metadata: dict = None):
     # --- Walk direct children of content div for sections ---
     sections = []
     last_h2 = None
-    current_heading = None
+    # Use the standard title as default heading so content before any h2 is captured
+    current_heading = full_title
     current_parent = None
-    current_level = None
+    current_level = 1
     current_content_parts = []
     current_footnote_refs = []
 
@@ -158,7 +319,7 @@ def parse_html_content(url: str, index_metadata: dict = None):
 
         if element.name in heading_tags:
             # Save previous section
-            if current_heading is not None:
+            if current_heading is not None and current_content_parts:
                 sections.append({
                     "heading": current_heading,
                     "parent": current_parent,
@@ -173,28 +334,37 @@ def parse_html_content(url: str, index_metadata: dict = None):
 
             if element.name == "h2":
                 last_h2 = current_heading
-                current_parent = None
+                current_parent = full_title
                 current_level = 2
             elif element.name == "h3":
                 current_parent = last_h2
                 current_level = 3
 
-        elif element.name in content_tags and current_heading is not None:
+        elif element.name in content_tags:
             # Collect footnote refs from this element
-            for fn_ref in element.find_all("a", attrs={"name": re.compile(r"^_ftnref")}):
+            def is_ftnref(tag):
+                return tag.name == "a" and (
+                    re.match(r"^_ftnref", tag.get("name", "")) or
+                    re.match(r"^_ftnref", tag.get("id", "")))
+
+            for fn_ref in element.find_all(is_ftnref):
                 sup = fn_ref.find("sup")
                 if sup:
-                    current_footnote_refs.append(sup.get_text(strip=True))
-                fn_ref.replace_with(" ")
+                    num = sup.get_text(strip=True)
+                    current_footnote_refs.append(num)
+                    fn_ref.replace_with(f" [fn_{num}] ")
+                else:
+                    fn_ref.replace_with(f" ")
 
             text = element.get_text(separator=" ")
             text = re.sub(r"\s+", " ", text).strip()
-            text = text.replace(" .", ".")
+            text = text.replace(" . ", ". ")
+            text = text.replace(" : ", ": ")
             if text:
                 current_content_parts.append(text)
 
     # Save last section
-    if current_heading is not None:
+    if current_heading is not None and current_content_parts:
         sections.append({
             "heading": current_heading,
             "parent": current_parent,
@@ -368,10 +538,19 @@ if __name__ == "__main__":
     try:
         for addy in to_scrape:
             if "spotlight" in addy:
-                print(f"\nScraping spotlight: {addy}")
-                data = parse_pdf_content(addy)
                 filename = addy.split("/")[-1].split("?")[0].replace(".pdf", ".json")
-                save_json(data, SPOTLIGHTS_DIR, filename)
+                filepath = os.path.join(SPOTLIGHTS_DIR, filename)
+
+                # Check if the JSON already exists (manually created)
+                if os.path.exists(filepath):
+                    print(f"\nSpotlight already exists: {filepath}")
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                else:
+                    print(f"\nScraping spotlight: {addy}")
+                    data = parse_pdf_content(addy)
+                    save_json(data, SPOTLIGHTS_DIR, filename)
+
                 index_items.append({
                     "document_type": "spotlight",
                     "title": data["metadata"]["title"],
@@ -395,7 +574,7 @@ if __name__ == "__main__":
                 for rule_data in rules:
                     rule_num = rule_data["metadata"]["standard_number"]
                     filename = rule_num.replace(" ", "_") + ".json"
-                    save_json(rule_data, STANDARDS_DIR, filename)
+                    save_json(rule_data, RULES_DIR, filename)
 
                     index_items.append({
                         "document_type": "rule",
