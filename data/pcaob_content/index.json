@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-10T23:08:04.727008",
-  "total_items": 21,
+  "generated_at": "2026-03-12T15:06:41.848111",
+  "total_items": 22,
   "items": [
     {
       "document_type": "standard",
@@ -132,6 +132,10 @@
       "standard_number": "Rule 3526",
       "title": "Rule 3526. Communication with Audit Committees Concerning Independence",
       "section": "Ethics & Independence Rules"
+    },
+    {
+      "document_type": "spotlight",
+      "title": "Spotlight: Inspection Observations Related to Auditor Independence"
     },
     {
       "document_type": "bulletin",
