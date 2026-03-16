@@ -2,20 +2,29 @@
 langchain
 langgraph
 langchain-anthropic
-langchain-community
+langchain-chroma
 langgraph-cli
+langdetect
 
 # Vector store
 chromadb
 
+# Embeddings
+openai
+tiktoken
+
 # PDF parsing
 pdfplumber
 
-# LLM
-anthropic
+# Scraping
+beautifulsoup4
+requests
 
 # Data handling
 pydantic
+
+# Environment
+python-dotenv
 
 # Evaluation
 pandas
