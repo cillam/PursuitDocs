@@ -197,10 +197,6 @@ The project includes an evaluation dataset of synthetic proposal letters annotat
 
 This is used to measure the reviewer agent's accuracy and the drafter's revision quality.
 
-## License
-
-MIT
-
 ## PCAOB Standards Usage
 
 This project references publicly available PCAOB standards and guidance for educational and demonstration purposes. Per the PCAOB's Terms of Use, PCAOB Public Materials — including rules, standards, forms, releases, orders, guidance, and reports — are permitted for use, publication, display, and distribution. This project does not use AICPA-copyrighted interim standards.

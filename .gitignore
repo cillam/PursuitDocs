@@ -66,10 +66,11 @@ htmlcov/
 *.secret
 
 # Large data files (download locally, don't commit)
-data/test_rfps/*.pdf
 data/pcaob_content/bulletins
 data/pcaob_content/spotlights
 data/pcaob_content/standards
 data/pcaob_content/rules
+data/pcaob_chunks.json
+
 PursuitDocs_Project_Plan.md
 PursuitDocs_Project_Log.md
