@@ -1,0 +1,52 @@
+{
+  "status": "ready_for_review",
+  "iterations": 3,
+  "final_letter": "March 19, 2026\n\nMr. Dave Jack\nInterim Business Administrator SAU #31\nSAU #31\n186A Main Street\nNewmarket, NH 03857\n\nDear Mr. Jack:\n\nFakerson, Madeup & Totallyriel LLP (\"FMT LLP\") is pleased to submit our proposal to provide external audit services for SAU #31. As a mid-size public accounting firm with extensive experience in government and nonprofit auditing, we understand the unique challenges facing school districts and are committed to delivering high-quality, timely audit services in accordance with professional standards.\n\nOur firm brings significant depth in government auditing standards and federal compliance requirements. We routinely conduct audits in accordance with Generally Accepted Auditing Standards (GAAS) and Government Auditing Standards, including the comprehensive internal control examinations and federal program testing essential for school district audits. Our government and nonprofit practice has successfully conducted audits for numerous public entities with complex compliance requirements while maintaining the September deadlines critical to your operations.\n\nFMT LLP's approach emphasizes both technical excellence and practical service delivery. We recognize that SAU #31 needs an audit team that can work efficiently within your timeline constraints while providing meaningful insights into your financial operations and internal controls. Our engagement team, led by [Engagement Partner First Name] [Engagement Partner Last Name], brings the continuity and expertise necessary to serve your district effectively across the full contract term, including any extensions.\n\nWe are fully independent with respect to SAU #31 and have no conflicts of interest that would impair our objectivity in conducting your audit. Our quality control systems, which have earned us a Pass rating on every peer review since our founding, ensure that your audit will meet the highest professional standards while addressing the specific needs of your school district and the New Hampshire Department of Education.\n\nFMT LLP is licensed to practice in all 50 states and the District of Columbia, and we maintain professional liability insurance adequate to support our professional responsibilities. We are committed to completing your audit by the required September 1 deadline each year and to providing the responsive, professional service that SAU #31 deserves.\n\nWe would welcome the opportunity to discuss how our experience and approach can serve your district's audit needs. Thank you for your consideration, and we look forward to the possibility of serving as your external auditors.\n\nSincerely,\n\nFakerson, Madeup & Totallyriel LLP",
+  "change_log": [
+    {
+      "iteration": 0,
+      "flagged_text": "Our government and nonprofit practice has successfully guided numerous public entities through complex compliance requirements",
+      "reason": "The word 'guided' suggests a management advisory role that could impair independence by creating an obligation to the client and blurring the line between auditor and management functions. This conflicts with the requirement that auditors must be free from any obligation to or interest in the client.",
+      "pcaob_citation": "QC 20 (referenced in PCAOB Spotlight on Independence): 'The audit firm and its personnel must be free from any obligation to or interest in the client, its management, or its owners.'",
+      "suggested_alternative": "Our government and nonprofit practice has successfully conducted audits for numerous public entities with complex compliance requirements"
+    },
+    {
+      "iteration": 1,
+      "flagged_text": "we understand the unique challenges facing school districts and are committed to delivering the high-quality, timely audit services your district requires",
+      "reason": "The phrase 'your district requires' suggests the auditor will tailor the audit to meet the client's specific desires rather than conducting an objective audit based on professional standards. This conflicts with the PCAOB requirement that auditors must be 'free from any obligation to or interest in the client' and maintain impartiality.",
+      "pcaob_citation": "QC 20 (cited in PCAOB Spotlight: Inspection Observations Related to Auditor Independence): 'Independence encompasses an impartiality that recognizes an obligation for fairness not only to management and owners of a business but also to those who may otherwise use the firm's audit report. The audit firm and its personnel must be free from any obligation to or interest in the client, its management, or its owners.'",
+      "suggested_alternative": "we understand the unique challenges facing school districts and are committed to delivering high-quality, timely audit services in accordance with professional standards"
+    },
+    {
+      "iteration": 1,
+      "flagged_text": "how our experience and approach can benefit your district",
+      "reason": "Language suggesting the audit will 'benefit' the client implies the auditor has a stake in providing favorable outcomes rather than maintaining objective professional skepticism. This conflicts with the requirement for impartiality and being free of conflicts of interest.",
+      "pcaob_citation": "QC 20 (cited in PCAOB Spotlight: Inspection Observations Related to Auditor Independence): 'Objectivity is a state of mind and a quality that lends value to an audit firm's services. The principle of objectivity imposes the obligation to be impartial, intellectually honest, and free of conflicts of interest.'",
+      "suggested_alternative": "how our experience and approach can serve your district's audit needs"
+    },
+    {
+      "iteration": 1,
+      "flagged_text": "we maintain professional liability insurance adequate to protect your district's interests",
+      "reason": "Stating that insurance will 'protect your district's interests' suggests the auditor is aligned with the client's interests rather than the public interest. This conflicts with the independence requirement that auditors recognize obligations to all users of the audit report, not just management.",
+      "pcaob_citation": "QC 20 (cited in PCAOB Spotlight: Inspection Observations Related to Auditor Independence): 'Independence encompasses an impartiality that recognizes an obligation for fairness not only to management and owners of a business but also to those who may otherwise use the firm's audit report.'",
+      "suggested_alternative": "we maintain professional liability insurance adequate to support our professional responsibilities"
+    }
+  ],
+  "parsed_rfp": {
+    "proposal_instructions": {
+      "instructions": "Submit three copies of the response. Include title page with RFP subject, firm name, address, contact numbers, contact person and date. Include table of contents, letter of transmittal, profile of firm, services to be provided, fee structure, and additional information sections. Must include completed Proposal Cost Form with fees for all years and hourly rates for expanded scope. Return complete RFP document required.",
+      "submission_deadline": "1:00 PM, Monday April 27, 2020"
+    },
+    "purpose_and_services": "External audit services for SAU #31 school district for three consecutive fiscal years (FY 2020-2022) with two one-year extensions (FY 2023-2024). Audits to be conducted in accordance with GAAS and government auditing standards. Services include financial and compliance audits, preparation of draft financial statements, examination of internal controls, federal program audits per OMB Circular A-133, and management letter. Final audit reports must be completed by September 1 each year.",
+    "entity_background": "SAU #31 is the School District of Newmarket, NH, governed by a 5-member elected School Board. Uses Incode10 (Tyler Technology) software for general ledger, budgeting, accounts payable, purchasing, payroll, human resources, grant reporting, and food service. Student activity funds use QuickBooks. Previous audits performed by Vachon Clukay and Company. Must complete NH Department of Education-25 Annual Financial Report.",
+    "addressee": {
+      "name": "Mr. Dave Jack",
+      "title": "Interim Business Administrator SAU #31",
+      "organization": "SAU #31",
+      "address": "186A Main Street, Newmarket, NH 03857",
+      "phone": "Not specified",
+      "email": "jackd@newmarket.k12.nh.us"
+    },
+    "summary": "This RFP seeks audit services for a New Hampshire school district with a structured evaluation process considering responsiveness, auditor experience, team qualifications, firm structure, and cost. The contract includes specific requirements for government auditing standards compliance, federal program audits, and internal control examinations. Key features include mandatory September 1 completion deadline, provision of office space by the district, payment upon final report acceptance, and 30-day termination clause. The district reserves rights to reject proposals and request additional information. Evaluation criteria emphasize technical expertise in government financial environments and team continuity across contract years."
+  }
+}

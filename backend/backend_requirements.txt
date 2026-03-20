@@ -1,0 +1,30 @@
+# PursuitDocs Backend Dependencies
+
+# Web framework
+fastapi
+mangum
+python-multipart
+uvicorn
+
+# LangGraph + LangChain
+langgraph
+langchain-anthropic
+
+# Vector store
+chromadb
+openai
+tiktoken
+
+# PDF extraction
+pdfplumber
+
+# HTML parsing
+beautifulsoup4
+requests
+
+# Utilities
+python-dotenv
+langdetect
+
+# Document export
+python-docx
