@@ -24,10 +24,10 @@ Outputs:
         "summary": "..."
     }
 
-Usage:
-    python parser.py <url_or_filepath>
-    python parser.py https://qfd.ca.gov/rfp-for-audit-services-fy-2024-through-fy2026
-    python parser.py .../data/test_rfps/some_rfp.pdf
+Usage (run from backend/):
+    python -m graph.nodes.parser <url_or_filepath>
+    python -m graph.nodes.parser https://example.gov/rfp-audit-services.pdf
+    python -m graph.nodes.parser ../data/test_rfps/some_rfp.pdf
 """
 
 import argparse
@@ -45,7 +45,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 from langdetect import detect
 
-ENV_LOC = "../../.env"
+ENV_LOC = "../.env"
 MODEL = "claude-sonnet-4-20250514"
 MAX_PDF_PAGES = 30
 MAX_FILE_SIZE_MB = 10
@@ -251,7 +251,9 @@ SYSTEM_PROMPT = """You are an expert at reading Requests for Proposals (RFPs) fo
 
 Your task is to extract structured information from an RFP. First, you must verify that the document you have received is a legitimate RFP for financial audit services. If the document you have received is an RFP for financial audit services, extract the following five fields:
 
-1. **proposal_instructions**: How the proposal should be formatted, what sections to include, submission requirements, deadlines, page limits, number of copies, and any other instructions for preparing the proposal.
+1. **proposal_instructions**: An object with two subfields:
+   - instructions: How the proposal should be formatted, what sections to include, submission requirements, page limits, number of copies, and any other instructions for preparing the proposal.
+   - submission_deadline: The deadline for submitting the proposal, including date and time if specified. Use the exact wording from the RFP.
 
 2. **purpose_and_services**: What audit services are being requested, for what entity, what fiscal years, what standards apply (GAAS, GASB, etc.), and any specific deliverables or scope items.
 
@@ -270,7 +272,10 @@ Your task is to extract structured information from an RFP. First, you must veri
 Respond ONLY with valid JSON matching this exact structure. Do not include any other text, markdown formatting, or code fences. Each field should contain only information specific to that field. Do not repeat information across fields.
 
 {
-    "proposal_instructions": "...",
+    "proposal_instructions": {
+        "instructions": "...",
+        "submission_deadline": "..."
+    },
     "purpose_and_services": "...",
     "entity_background": "...",
     "addressee": {
@@ -284,7 +289,7 @@ Respond ONLY with valid JSON matching this exact structure. Do not include any o
     "summary": "..."
 }
 
-If a field cannot be determined from the RFP, use "Not specified" as the value. For the addressee, use "Not specified" for any subfield that cannot be determined. If you believe the RFP to not be a legitimate request for audit services, every field should use "Not specified", except for the summary, which you should use to add an explanation of your reasoning why the RFP may not be legitimate. Such an explanation should be limited to fewer than 50 words."""
+If a field cannot be determined from the RFP, use "Not specified" as the value. For the addressee and proposal_instructions, use "Not specified" for any subfield that cannot be determined. If you believe the RFP to not be a legitimate request for audit services, every field should use "Not specified", except for the summary, which you should use to add an explanation of your reasoning why the RFP may not be legitimate. Such an explanation should be limited to fewer than 50 words."""
 
 
 def parse_rfp(text: str) -> dict:

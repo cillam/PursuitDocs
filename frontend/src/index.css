@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-ink-950 text-ink-100 font-body antialiased;
+  }
+
+  ::selection {
+    @apply bg-brass-400/30 text-white;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-ink-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-ink-600 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-ink-500;
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply w-full bg-ink-900/60 border border-ink-700/50 rounded-lg px-4 py-3
+           text-ink-100 placeholder-ink-500 font-body
+           focus:outline-none focus:border-brass-500/60 focus:ring-1 focus:ring-brass-500/30
+           transition-all duration-200;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-brass-500 hover:bg-brass-400 active:bg-brass-600
+           text-ink-950 font-semibold rounded-lg
+           transition-all duration-200
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brass-500;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3
+           bg-ink-800 hover:bg-ink-700 active:bg-ink-900
+           text-ink-200 font-medium rounded-lg border border-ink-600/50
+           transition-all duration-200
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  .card {
+    @apply bg-ink-900/40 border border-ink-700/30 rounded-xl backdrop-blur-sm;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .status-ready {
+    @apply status-badge bg-emerald-500/15 text-emerald-400 border border-emerald-500/20;
+  }
+
+  .status-needs-revision {
+    @apply status-badge bg-amber-500/15 text-amber-400 border border-amber-500/20;
+  }
+}
+
+/* Fade in animation */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease-out forwards;
+}
+
+.animate-fade-up-delay-1 {
+  animation: fadeUp 0.5s ease-out 0.1s forwards;
+  opacity: 0;
+}
+
+.animate-fade-up-delay-2 {
+  animation: fadeUp 0.5s ease-out 0.2s forwards;
+  opacity: 0;
+}
+
+/* Pulse for progress dots */
+@keyframes progressPulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.progress-dot {
+  animation: progressPulse 1.5s ease-in-out infinite;
+}

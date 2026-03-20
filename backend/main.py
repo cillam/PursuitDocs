@@ -1,0 +1,271 @@
+"""
+main.py
+
+FastAPI backend for PursuitDocs.
+
+Wraps the LangGraph pipeline as an API endpoint.
+Accepts RFP submissions via file upload or URL and returns
+the final letter, change log, and status.
+
+Designed to run on AWS Lambda via Mangum adapter.
+"""
+
+import json
+import os
+import tempfile
+import time
+from typing import Optional
+
+import requests as http_requests
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
+
+# Load env from project root (one level up from backend/)
+load_dotenv("../.env")
+
+# Import after env is loaded
+from graph import build_graph
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY", "")
+RECAPTCHA_THRESHOLD = float(os.getenv("RECAPTCHA_THRESHOLD", "0.5"))
+FIRM_PROFILE_PATH = os.getenv("FIRM_PROFILE_PATH", "../data/firm_profile.json")
+
+ALLOWED_DOMAINS = [".gov", ".edu", ".org", ".us"]
+MAX_FILE_SIZE_MB = 10
+RATE_LIMIT_WINDOW = 3600  # 1 hour
+RATE_LIMIT_MAX = 10  # requests per window per IP
+
+# Simple in-memory rate limiter (resets on Lambda cold start)
+rate_limit_store = {}
+
+
+# ---------------------------------------------------------------------------
+# App setup
+# ---------------------------------------------------------------------------
+
+app = FastAPI(
+    title="PursuitDocs API",
+    description="AI-powered audit proposal letter generation",
+    version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Load firm profile once at startup
+with open(FIRM_PROFILE_PATH) as f:
+    FIRM_PROFILE = json.load(f)
+
+# Build graph once at startup
+GRAPH = build_graph()
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def verify_recaptcha(token: str) -> bool:
+    """Verify reCAPTCHA v3 token with Google."""
+    if not RECAPTCHA_SECRET_KEY:
+        # Skip verification in development
+        return True
+
+    try:
+        response = http_requests.post(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data={
+                "secret": RECAPTCHA_SECRET_KEY,
+                "response": token,
+            },
+            timeout=10,
+        )
+        result = response.json()
+        return result.get("success", False) and result.get("score", 0) >= RECAPTCHA_THRESHOLD
+    except Exception:
+        return False
+
+
+def check_rate_limit(ip: str) -> bool:
+    """Simple in-memory rate limiter. Returns True if allowed."""
+    now = time.time()
+
+    # Clean expired entries
+    expired = [k for k, v in rate_limit_store.items() if now - v["window_start"] > RATE_LIMIT_WINDOW]
+    for k in expired:
+        del rate_limit_store[k]
+
+    if ip not in rate_limit_store:
+        rate_limit_store[ip] = {"count": 1, "window_start": now}
+        return True
+
+    entry = rate_limit_store[ip]
+    if now - entry["window_start"] > RATE_LIMIT_WINDOW:
+        rate_limit_store[ip] = {"count": 1, "window_start": now}
+        return True
+
+    if entry["count"] >= RATE_LIMIT_MAX:
+        return False
+
+    entry["count"] += 1
+    return True
+
+
+def validate_url(url: str) -> str:
+    """Validate and return the URL, or raise HTTPException."""
+    if not url.startswith(("http://", "https://")):
+        raise HTTPException(status_code=400, detail="Only http and https URLs are allowed.")
+
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    hostname = parsed.hostname.lower() if parsed.hostname else ""
+
+    if not any(hostname.endswith(domain) for domain in ALLOWED_DOMAINS):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only URLs from approved domains are accepted ({', '.join(ALLOWED_DOMAINS)})."
+        )
+
+    return url
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/health")
+def health():
+    """Health check endpoint."""
+    return {"status": "ok", "service": "pursuitdocs"}
+
+
+@app.post("/api/submit")
+async def submit_rfp(
+    request: Request,
+    name: str = Form(...),
+    email: str = Form(...),
+    purpose: str = Form(...),
+    recaptcha_token: str = Form(...),
+    rfp_url: Optional[str] = Form(None),
+    rfp_file: Optional[UploadFile] = File(None),
+):
+    """Submit an RFP for processing through the PursuitDocs pipeline."""
+
+    # Rate limiting
+    client_ip = request.client.host
+    if not check_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Please try again later."
+        )
+
+    # reCAPTCHA verification
+    if not verify_recaptcha(recaptcha_token):
+        raise HTTPException(status_code=403, detail="reCAPTCHA verification failed.")
+
+    # Validate input — need either a URL or a file
+    if not rfp_url and not rfp_file:
+        raise HTTPException(status_code=400, detail="Please provide an RFP URL or upload a PDF file.")
+
+    if rfp_url and rfp_file:
+        raise HTTPException(status_code=400, detail="Please provide either a URL or a file, not both.")
+
+    # Determine the RFP source
+    tmp_path = None
+    try:
+        if rfp_url:
+            rfp_source = validate_url(rfp_url)
+        else:
+            # Validate file
+            if rfp_file.content_type != "application/pdf":
+                raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+
+            content = await rfp_file.read()
+            size_mb = len(content) / (1024 * 1024)
+            if size_mb > MAX_FILE_SIZE_MB:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"File size ({size_mb:.1f} MB) exceeds the {MAX_FILE_SIZE_MB} MB limit."
+                )
+
+            # Check PDF magic bytes
+            if not content[:5] == b"%PDF-":
+                raise HTTPException(status_code=400, detail="File does not appear to be a valid PDF.")
+
+            # Save to temp file
+            tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+            tmp.write(content)
+            tmp.close()
+            tmp_path = tmp.name
+            rfp_source = tmp_path
+
+        # Run the pipeline
+        initial_state = {
+            "rfp_source": rfp_source,
+            "firm_profile": FIRM_PROFILE,
+            "parsed_rfp": {},
+            "current_draft": "",
+            "review_result": {},
+            "change_log": [],
+            "iteration": 0,
+            "status": "in_progress",
+        }
+
+        result = GRAPH.invoke(initial_state)
+
+        return {
+            "status": result["status"],
+            "iterations": result["iteration"],
+            "final_letter": result["current_draft"],
+            "change_log": result["change_log"],
+            "parsed_rfp": result["parsed_rfp"],
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
+    finally:
+        # Clean up temp file
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+@app.post("/api/export-docx")
+async def export_docx(
+    request: Request,
+    letter_text: str = Form(...),
+):
+    """Export a letter as a Word document."""
+    from fastapi.responses import Response
+    from graph.utils.export import letter_to_docx
+
+    try:
+        docx_bytes = letter_to_docx(letter_text)
+        return Response(
+            content=docx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={
+                "Content-Disposition": "attachment; filename=proposal_letter.docx"
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export error: {str(e)}")
+
+
+# ---------------------------------------------------------------------------
+# Lambda handler
+# ---------------------------------------------------------------------------
+
+handler = Mangum(app, lifespan="off")

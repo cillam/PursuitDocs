@@ -1,0 +1,78 @@
+{
+  "engagement_partner": {
+    "first_name": "Sarah",
+    "last_name": "Keller",
+    "title": "Partner",
+    "email": "skeller@fmtllp.com",
+    "phone": "(555) 412-8800",
+    "office": "Fictionville, California",
+    "years_experience": 22,
+    "certifications": ["CPA (California, New York, Texas)", "CISA"],
+    "education": "M.S. Accountancy, University of Southern California; B.S. Business Administration, UCLA",
+    "bio": "Sarah Keller is a partner in FMT LLP's audit practice and leads the firm's technology industry group. She has over 22 years of experience auditing public and private technology companies, with particular depth in SaaS, cloud infrastructure, and fintech. Sarah has led engagements for clients ranging from pre-IPO startups to publicly traded companies with revenues exceeding $2 billion. Her expertise includes revenue recognition under ASC 606 for software and subscription-based business models, SOC reporting, and cybersecurity compliance. She has extensive experience coordinating with audit committees and presenting findings to boards of directors.",
+    "industry_experience": ["SaaS", "Cloud Infrastructure", "Fintech", "Life Sciences"],
+    "notable_experience": [
+      "Led audit engagements for over 30 technology companies across SaaS, cloud, and fintech sectors",
+      "Managed multi-year integrated audits for three publicly traded technology companies",
+      "Significant experience with IPO readiness assessments and S-1 filing support",
+      "Specializes in complex revenue recognition for subscription and usage-based models"
+    ]
+  },
+  "secondary_engagement_partner": {
+    "first_name": "David",
+    "last_name": "Okonkwo",
+    "title": "Partner",
+    "email": "dokonkwo@fmtllp.com",
+    "phone": "(555) 412-8815",
+    "office": "Inventedton, New York",
+    "years_experience": 18,
+    "certifications": ["CPA (New York, Illinois, California)", "CITP"],
+    "education": "M.B.A., Columbia Business School; B.S. Accounting, Howard University",
+    "bio": "David Okonkwo is a partner in FMT LLP's audit and advisory practice with 18 years of experience serving technology and professional services companies. He specializes in IT compliance, SOC reporting, and privacy audits, and has led engagements involving complex IT environments including multi-cloud architectures and hybrid infrastructure. David also oversees the firm's cybersecurity audit practice and has deep expertise in SOC 2 Type II examinations. He is known for his ability to translate technical findings into actionable recommendations for management and audit committees.",
+    "industry_experience": ["Technology", "Professional Services", "Cybersecurity", "Cloud Infrastructure"],
+    "notable_experience": [
+      "Led SOC 2 Type II examinations for over 40 technology companies",
+      "Oversees FMT LLP's cybersecurity and privacy audit practice",
+      "Experienced in auditing complex multi-cloud and hybrid IT environments",
+      "Frequent speaker on IT compliance and emerging cybersecurity risks"
+    ]
+  },
+  "audit_manager": {
+    "first_name": "Michelle",
+    "last_name": "Tran",
+    "title": "Audit Manager",
+    "email": "mtran@fmtllp.com",
+    "phone": "(555) 412-8830",
+    "office": "Fictionville, California",
+    "years_experience": 9,
+    "certifications": ["CPA (California)"],
+    "education": "M.S. Accounting, San Jose State University; B.S. Finance, UC Davis",
+    "bio": "Michelle Tran is an audit manager with nine years of experience in financial statement audits for technology companies. She manages day-to-day engagement execution including planning, fieldwork coordination, staff supervision, and deliverable preparation. Michelle has managed audits for SaaS, fintech, and life sciences clients and has particular expertise in revenue recognition testing, stock-based compensation, and internal control evaluation. She serves as the primary point of contact for client teams during fieldwork.",
+    "industry_experience": ["SaaS", "Fintech", "Life Sciences"],
+    "notable_experience": [
+      "Managed financial statement audits for over 20 technology and life sciences companies",
+      "Expertise in ASC 606 revenue recognition testing for software companies",
+      "Experienced in coordinating with external IT specialists for integrated audits",
+      "Developed internal training materials on stock-based compensation auditing"
+    ]
+  },
+  "audit_senior": {
+    "first_name": "James",
+    "last_name": "Petrov",
+    "title": "Audit Senior",
+    "email": "jpetrov@fmtllp.com",
+    "phone": "(555) 412-8845",
+    "office": "Fictionville, California",
+    "years_experience": 4,
+    "certifications": ["CPA (California)"],
+    "education": "B.S. Accounting, Santa Clara University",
+    "bio": "James Petrov is an audit senior with four years of experience executing financial statement audits for technology companies. He leads fieldwork teams, performs substantive testing, and prepares workpapers for manager and partner review. James has experience across SaaS, cloud infrastructure, and professional services engagements, with particular strength in cash and revenue cycle testing, accounts receivable confirmation procedures, and IT general controls testing.",
+    "industry_experience": ["SaaS", "Cloud Infrastructure", "Professional Services"],
+    "notable_experience": [
+      "Executed fieldwork on over 15 technology company audits",
+      "Experienced in testing IT general controls and automated application controls",
+      "Performed revenue cycle and accounts receivable testing for subscription-based businesses",
+      "Trained and supervised audit associates on engagement procedures"
+    ]
+  }
+}
