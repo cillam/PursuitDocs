@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import Header from './components/Header';
 import IntakeForm from './components/IntakeForm';
@@ -17,40 +17,33 @@ function AppContent() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [currentStage, setCurrentStage] = useState('parsing');
-  const [iteration, setIteration] = useState(0);
   const [canRegenerate, setCanRegenerate] = useState(true);
   const [lastSubmission, setLastSubmission] = useState(null);
+  const stageTimers = useRef([]);
+
+  const clearStageTimers = () => {
+    stageTimers.current.forEach(clearTimeout);
+    stageTimers.current = [];
+  };
 
   const handleSubmit = useCallback(async (formData) => {
     setAppState('processing');
     setCurrentStage('parsing');
-    setIteration(0);
     setLastSubmission(formData);
+    clearStageTimers();
+
+    // Simulate progress stages while waiting for the API call.
+    // Timings are approximate — the real call determines when we finish.
+    stageTimers.current = [
+      setTimeout(() => setCurrentStage('drafting'), 8000),
+      setTimeout(() => setCurrentStage('reviewing'), 20000),
+      setTimeout(() => setCurrentStage('revising'), 40000),
+      setTimeout(() => setCurrentStage('finalizing'), 60000),
+    ];
 
     try {
-      // Simulate stage progression
-      // In a real implementation with WebSocket or polling,
-      // these would update based on actual backend progress
-      const stageTimer = (stage, delay) =>
-        new Promise(resolve => {
-          setTimeout(() => {
-            setCurrentStage(stage);
-            resolve();
-          }, delay);
-        });
-
-      // Start the actual API call
-      const apiPromise = submitRfp(formData);
-
-      // Simulate progress stages while waiting
-      // These timings are approximate — the real call determines when we finish
-      stageTimer('drafting', 8000);
-      stageTimer('reviewing', 20000);
-      stageTimer('revising', 40000);
-      stageTimer('finalizing', 60000);
-
-      const data = await apiPromise;
-
+      const data = await submitRfp(formData);
+      clearStageTimers();
       setResult(data);
       setAppState('results');
     } catch (err) {
@@ -59,6 +52,7 @@ function AppContent() {
         || err.response?.data?.error
         || err.message
         || 'An unexpected error occurred. Please try again.';
+      clearStageTimers();
       setError(message);
       setAppState('error');
     }
@@ -89,7 +83,6 @@ function AppContent() {
           {appState === 'processing' && (
             <ProgressIndicator
               currentStage={currentStage}
-              iteration={iteration}
             />
           )}
 

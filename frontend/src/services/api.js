@@ -40,17 +40,6 @@ export async function submitRfp({ name, email, purpose, rfpUrl, rfpFile, recaptc
 }
 
 /**
- * Check the status of a running pipeline.
- *
- * @param {string} jobId - The job ID returned from submitRfp
- * @returns {Promise<Object>} Current status and results if complete
- */
-export async function checkStatus(jobId) {
-  const response = await api.get(`/status/${jobId}`);
-  return response.data;
-}
-
-/**
  * Export the letter as a Word document.
  *
  * @param {string} letterText - The letter content

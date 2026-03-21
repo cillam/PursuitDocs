@@ -17,13 +17,19 @@ import time
 from typing import Optional
 
 import requests as http_requests
-from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 
-# Load env from project root (one level up from backend/)
-load_dotenv("../.env")
+# ---------------------------------------------------------------------------
+# Environment detection
+# ---------------------------------------------------------------------------
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+
+if ENVIRONMENT == "local":
+    from dotenv import load_dotenv
+    load_dotenv('../../secrets/pursuitdocs/backend/.env')
 
 # Import after env is loaded
 from graph import build_graph
@@ -35,15 +41,131 @@ from graph import build_graph
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
 RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY", "")
 RECAPTCHA_THRESHOLD = float(os.getenv("RECAPTCHA_THRESHOLD", "0.5"))
-FIRM_PROFILE_PATH = os.getenv("FIRM_PROFILE_PATH", "../data/firm_profile.json")
 
 ALLOWED_DOMAINS = [".gov", ".edu", ".org", ".us"]
 MAX_FILE_SIZE_MB = 10
 RATE_LIMIT_WINDOW = 3600  # 1 hour
 RATE_LIMIT_MAX = 10  # requests per window per IP
 
-# Simple in-memory rate limiter (resets on Lambda cold start)
-rate_limit_store = {}
+
+# ---------------------------------------------------------------------------
+# Cold start: S3 downloads (production only)
+# ---------------------------------------------------------------------------
+
+def download_chroma_from_s3():
+    """Download Chroma DB from S3 to /tmp on Lambda cold start."""
+    import boto3
+
+    if os.path.exists("/tmp/chroma_db"):
+        return  # Already downloaded from a previous invocation
+
+    s3 = boto3.client("s3")
+    bucket = os.getenv("CHROMA_S3_BUCKET")
+    prefix = "chroma_db/"
+
+    paginator = s3.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            local_path = os.path.join("/tmp", key)
+            os.makedirs(os.path.dirname(local_path), exist_ok=True)
+            s3.download_file(bucket, key, local_path)
+
+
+def download_firm_profile_from_s3() -> str:
+    """Download the firm profile JSON from S3 to /tmp on Lambda cold start.
+
+    The specific profile is selected via the FIRM_PROFILE_S3_KEY env var
+    (e.g. 'firm-profiles/acme-cpa/profile.json'), making it easy to switch
+    firms by updating only the Lambda environment variable.
+
+    Returns the local path to the downloaded file.
+    """
+    import boto3
+
+    local_path = "/tmp/firm_profile.json"
+    if os.path.exists(local_path):
+        return local_path  # Already downloaded from a previous invocation
+
+    s3 = boto3.client("s3")
+    bucket = os.getenv("CHROMA_S3_BUCKET")
+    key = os.getenv("FIRM_PROFILE_S3_KEY")  # e.g. "firm-profiles/acme-cpa/profile.json"
+    s3.download_file(bucket, key, local_path)
+    return local_path
+
+
+if ENVIRONMENT == "local":
+    FIRM_PROFILE_PATH = os.getenv("FIRM_PROFILE_PATH", "../data/firm_profile.json")
+else:
+    download_chroma_from_s3()
+    FIRM_PROFILE_PATH = download_firm_profile_from_s3()
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+if ENVIRONMENT == "local":
+    # Simple in-memory rate limiter (resets on restart)
+    rate_limit_store = {}
+
+    def check_rate_limit(ip: str) -> bool:
+        """In-memory rate limiter. Returns True if allowed."""
+        now = time.time()
+
+        # Clean expired entries
+        expired = [k for k, v in rate_limit_store.items() if now - v["window_start"] > RATE_LIMIT_WINDOW]
+        for k in expired:
+            del rate_limit_store[k]
+
+        if ip not in rate_limit_store:
+            rate_limit_store[ip] = {"count": 1, "window_start": now}
+            return True
+
+        entry = rate_limit_store[ip]
+        if now - entry["window_start"] > RATE_LIMIT_WINDOW:
+            rate_limit_store[ip] = {"count": 1, "window_start": now}
+            return True
+
+        if entry["count"] >= RATE_LIMIT_MAX:
+            return False
+
+        entry["count"] += 1
+        return True
+
+else:
+    import boto3
+
+    dynamodb = boto3.resource("dynamodb")
+    rate_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
+
+    def check_rate_limit(ip: str) -> bool:
+        """DynamoDB-backed rate limiter. Returns True if allowed."""
+        now = int(time.time())
+        window_start = now - RATE_LIMIT_WINDOW
+
+        response = rate_table.get_item(Key={"ip": ip})
+        item = response.get("Item")
+
+        if not item or item.get("window_start", 0) < window_start:
+            rate_table.put_item(Item={
+                "ip": ip,
+                "count": 1,
+                "window_start": now,
+                "expires_at": now + RATE_LIMIT_WINDOW + 3600,
+            })
+            return True
+
+        if item.get("count", 0) >= RATE_LIMIT_MAX:
+            return False
+
+        rate_table.update_item(
+            Key={"ip": ip},
+            UpdateExpression="SET #c = #c + :inc",
+            ExpressionAttributeNames={"#c": "count"},
+            ExpressionAttributeValues={":inc": 1},
+        )
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -95,31 +217,6 @@ def verify_recaptcha(token: str) -> bool:
         return result.get("success", False) and result.get("score", 0) >= RECAPTCHA_THRESHOLD
     except Exception:
         return False
-
-
-def check_rate_limit(ip: str) -> bool:
-    """Simple in-memory rate limiter. Returns True if allowed."""
-    now = time.time()
-
-    # Clean expired entries
-    expired = [k for k, v in rate_limit_store.items() if now - v["window_start"] > RATE_LIMIT_WINDOW]
-    for k in expired:
-        del rate_limit_store[k]
-
-    if ip not in rate_limit_store:
-        rate_limit_store[ip] = {"count": 1, "window_start": now}
-        return True
-
-    entry = rate_limit_store[ip]
-    if now - entry["window_start"] > RATE_LIMIT_WINDOW:
-        rate_limit_store[ip] = {"count": 1, "window_start": now}
-        return True
-
-    if entry["count"] >= RATE_LIMIT_MAX:
-        return False
-
-    entry["count"] += 1
-    return True
 
 
 def validate_url(url: str) -> str:

@@ -20,7 +20,7 @@ from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-ENV_LOC = "../.env"
+ENV_LOC = '../../secrets/pursuitdocs/backend/.env'
 
 
 def letter_to_docx(letter_text: str, firm_name: str = None) -> bytes:
