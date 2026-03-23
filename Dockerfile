@@ -2,7 +2,7 @@ FROM public.ecr.aws/lambda/python:3.10
 
 # Copy requirements and install
 COPY backend/backend_requirements.txt ${LAMBDA_TASK_ROOT}/requirements.txt
-RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
+RUN pip install --upgrade pip && pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 
 # Copy backend code
 COPY backend/main.py ${LAMBDA_TASK_ROOT}/

@@ -13,7 +13,7 @@ langchain-anthropic
 # Vector store
 chromadb
 openai
-tiktoken
+tiktoken==0.7.0
 
 # PDF extraction
 pdfplumber
