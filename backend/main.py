@@ -73,6 +73,8 @@ def download_chroma_from_s3():
     for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
         for obj in page.get("Contents", []):
             key = obj["Key"]
+            if key.endswith("/"):
+                continue  # Skip S3 folder markers
             local_path = os.path.join("/tmp", key)
             os.makedirs(os.path.dirname(local_path), exist_ok=True)
             s3.download_file(bucket, key, local_path)
