@@ -7,6 +7,7 @@ RUN pip install --upgrade pip && pip install --no-cache-dir -r ${LAMBDA_TASK_ROO
 # Copy backend code
 COPY backend/main.py ${LAMBDA_TASK_ROOT}/
 COPY backend/graph/ ${LAMBDA_TASK_ROOT}/graph/
+RUN chmod -R 755 ${LAMBDA_TASK_ROOT}/
 
 # Chroma DB and firm profiles are loaded from S3 at runtime — do not copy here
 

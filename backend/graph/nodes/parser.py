@@ -209,8 +209,8 @@ def validate_keywords(text: str) -> None:
     missing = [kw for kw in REQUIRED_KEYWORDS if kw not in text_lower]
     if missing:
         raise ValueError(
-            f"Document does not appear to be an audit RFP. "
-            f"Missing required terms: {', '.join(missing)}"
+            "This document does not appear to be a Request for Proposal for audit services. "
+            "Please verify you have uploaded the correct document and try again."
         )
 
 

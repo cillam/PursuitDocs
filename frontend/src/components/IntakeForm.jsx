@@ -56,6 +56,7 @@ export default function IntakeForm({ onSubmit, isLoading }) {
   });
   const [errors, setErrors] = useState({});
   const [fileName, setFileName] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -66,20 +67,40 @@ export default function IntakeForm({ onSubmit, isLoading }) {
     }
   };
 
+  const applyFile = (file) => {
+    const error = validateFile(file);
+    if (error) {
+      setErrors(prev => ({ ...prev, rfpFile: error }));
+      setFormData(prev => ({ ...prev, rfpFile: null }));
+      setFileName('');
+      return;
+    }
+    setFormData(prev => ({ ...prev, rfpFile: file }));
+    setFileName(file.name);
+    setErrors(prev => ({ ...prev, rfpFile: null }));
+  };
+
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      const error = validateFile(file);
-      if (error) {
-        setErrors(prev => ({ ...prev, rfpFile: error }));
-        setFormData(prev => ({ ...prev, rfpFile: null }));
-        setFileName('');
-        return;
-      }
-      setFormData(prev => ({ ...prev, rfpFile: file }));
-      setFileName(file.name);
-      setErrors(prev => ({ ...prev, rfpFile: null }));
-    }
+    if (file) applyFile(file);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    if (!isLoading) setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (isLoading) return;
+    const file = e.dataTransfer.files[0];
+    if (file) applyFile(file);
   };
 
   const handleSubmit = useCallback(async (e) => {
@@ -274,10 +295,15 @@ export default function IntakeForm({ onSubmit, isLoading }) {
             <div>
               <label
                 htmlFor="rfpFile"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
                 className={`flex items-center justify-center gap-3 w-full py-8 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
-                  fileName
-                    ? 'border-brass-500/40 bg-brass-500/5'
-                    : 'border-ink-700/50 hover:border-ink-600 bg-ink-900/30'
+                  isDragging
+                    ? 'border-brass-400 bg-brass-500/10'
+                    : fileName
+                      ? 'border-brass-500/40 bg-brass-500/5'
+                      : 'border-ink-700/50 hover:border-ink-600 bg-ink-900/30'
                 } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <input
