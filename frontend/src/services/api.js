@@ -40,6 +40,17 @@ export async function submitRfp({ name, email, purpose, rfpUrl, rfpFile, recaptc
 }
 
 /**
+ * Poll for the status and result of a submitted job.
+ *
+ * @param {string} jobId
+ * @returns {Promise<{job_id: string, status: string, result?: Object, error?: string}>}
+ */
+export async function getJobStatus(jobId) {
+  const response = await api.get(`/status/${jobId}`);
+  return response.data;
+}
+
+/**
  * Export the letter as a Word document.
  *
  * @param {string} letterText - The letter content

@@ -6,7 +6,7 @@ import ProgressIndicator from './components/ProgressIndicator';
 import ResultsDisplay from './components/ResultsDisplay';
 import ErrorDisplay from './components/ErrorDisplay';
 import Footer from './components/Footer';
-import { submitRfp } from './services/api';
+import { submitRfp, getJobStatus } from './services/api';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
 
@@ -20,10 +20,18 @@ function AppContent() {
   const [canRegenerate, setCanRegenerate] = useState(true);
   const [lastSubmission, setLastSubmission] = useState(null);
   const stageTimers = useRef([]);
+  const pollTimer = useRef(null);
 
   const clearStageTimers = () => {
     stageTimers.current.forEach(clearTimeout);
     stageTimers.current = [];
+  };
+
+  const clearPollTimer = () => {
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
   };
 
   const handleSubmit = useCallback(async (formData) => {
@@ -31,9 +39,10 @@ function AppContent() {
     setCurrentStage('parsing');
     setLastSubmission(formData);
     clearStageTimers();
+    clearPollTimer();
 
-    // Simulate progress stages while waiting for the API call.
-    // Timings are approximate — the real call determines when we finish.
+    // Simulate progress stages while waiting for results.
+    // Timings are approximate — the poll result determines when we finish.
     stageTimers.current = [
       setTimeout(() => setCurrentStage('drafting'), 8000),
       setTimeout(() => setCurrentStage('reviewing'), 20000),
@@ -42,17 +51,37 @@ function AppContent() {
     ];
 
     try {
-      const data = await submitRfp(formData);
-      clearStageTimers();
-      setResult(data);
-      setAppState('results');
+      const { job_id } = await submitRfp(formData);
+
+      pollTimer.current = setInterval(async () => {
+        try {
+          const { status, result, error } = await getJobStatus(job_id);
+          if (status === 'complete') {
+            clearPollTimer();
+            clearStageTimers();
+            setResult(result);
+            setAppState('results');
+          } else if (status === 'error') {
+            clearPollTimer();
+            clearStageTimers();
+            setError(error || 'Pipeline failed. Please try again.');
+            setAppState('error');
+          }
+          // pending | processing — keep polling
+        } catch (pollErr) {
+          clearPollTimer();
+          clearStageTimers();
+          setError('Lost connection while waiting for results. Please try again.');
+          setAppState('error');
+        }
+      }, 4000);
     } catch (err) {
-      console.error('Pipeline error:', err);
+      console.error('Submit error:', err);
+      clearStageTimers();
       const message = err.response?.data?.detail
         || err.response?.data?.error
         || err.message
         || 'An unexpected error occurred. Please try again.';
-      clearStageTimers();
       setError(message);
       setAppState('error');
     }
@@ -65,6 +94,7 @@ function AppContent() {
   }, [lastSubmission, canRegenerate, handleSubmit]);
 
   const handleRetry = useCallback(() => {
+    clearPollTimer();
     setAppState('form');
     setError('');
     setResult(null);

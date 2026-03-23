@@ -8,12 +8,18 @@ Accepts RFP submissions via file upload or URL and returns
 the final letter, change log, and status.
 
 Designed to run on AWS Lambda via Mangum adapter.
+
+Uses an async job pattern to avoid API Gateway's 30-second timeout:
+  POST /api/submit          → validates input, fires async worker Lambda,
+                              returns {job_id} immediately
+  GET  /api/status/{job_id} → polls DynamoDB for result
 """
 
 import json
 import os
 import tempfile
 import time
+import uuid
 from typing import Optional
 
 import requests as http_requests
@@ -102,7 +108,7 @@ else:
 
 
 # ---------------------------------------------------------------------------
-# Rate limiting
+# Rate limiting + production AWS clients
 # ---------------------------------------------------------------------------
 
 if ENVIRONMENT == "local":
@@ -138,6 +144,11 @@ else:
 
     dynamodb = boto3.resource("dynamodb")
     rate_table = dynamodb.Table(os.getenv("DYNAMODB_TABLE"))
+    jobs_table = dynamodb.Table(os.getenv("JOBS_TABLE"))
+    lambda_client = boto3.client("lambda")
+    s3_client = boto3.client("s3")
+    TEMP_UPLOADS_BUCKET = os.getenv("CHROMA_S3_BUCKET")
+    WORKER_LAMBDA_ARN = os.getenv("WORKER_LAMBDA_ARN")
 
     def check_rate_limit(ip: str) -> bool:
         """DynamoDB-backed rate limiter. Returns True if allowed."""
@@ -193,6 +204,10 @@ with open(FIRM_PROFILE_PATH) as f:
 # Build graph once at startup
 GRAPH = build_graph()
 
+# Local dev job store — mirrors DynamoDB jobs_table for production
+if ENVIRONMENT == "local":
+    local_jobs: dict = {}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -237,6 +252,89 @@ def validate_url(url: str) -> str:
     return url
 
 
+def _run_pipeline(rfp_source: str) -> dict:
+    """Run the LangGraph pipeline and return a serializable result dict."""
+    result = GRAPH.invoke({
+        "rfp_source": rfp_source,
+        "firm_profile": FIRM_PROFILE,
+        "parsed_rfp": {},
+        "current_draft": "",
+        "review_result": {},
+        "change_log": [],
+        "iteration": 0,
+        "status": "in_progress",
+    })
+    return {
+        "status": result["status"],
+        "iterations": result["iteration"],
+        "final_letter": result["current_draft"],
+        "change_log": result["change_log"],
+        "parsed_rfp": result["parsed_rfp"],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Worker handler (production: invoked async by submit endpoint)
+# ---------------------------------------------------------------------------
+
+def _worker_handler(event: dict, _context) -> dict:
+    """
+    Runs the pipeline for a given job.
+    Invoked directly by Lambda (not via API Gateway) with InvocationType='Event',
+    so it is not subject to the 30-second API Gateway timeout.
+    """
+    job_id = event["job_id"]
+    rfp_source = event["rfp_source"]
+    tmp_path = None
+
+    jobs_table.update_item(
+        Key={"job_id": job_id},
+        UpdateExpression="SET #s = :s",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={":s": "processing"},
+    )
+
+    try:
+        # File uploads are stashed in S3 by the submit endpoint — download now
+        if rfp_source.startswith("s3-upload:"):
+            s3_key = rfp_source[len("s3-upload:"):]
+            tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+            tmp.close()
+            tmp_path = tmp.name
+            s3_client.download_file(TEMP_UPLOADS_BUCKET, s3_key, tmp_path)
+            rfp_source = tmp_path
+
+        result = _run_pipeline(rfp_source)
+
+        jobs_table.update_item(
+            Key={"job_id": job_id},
+            UpdateExpression="SET #s = :s, #r = :r",
+            ExpressionAttributeNames={"#s": "status", "#r": "result"},
+            ExpressionAttributeValues={":s": "complete", ":r": result},
+        )
+
+    except Exception as e:
+        jobs_table.update_item(
+            Key={"job_id": job_id},
+            UpdateExpression="SET #s = :s, #e = :e",
+            ExpressionAttributeNames={"#s": "status", "#e": "error"},
+            ExpressionAttributeValues={":s": "error", ":e": str(e)},
+        )
+
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        # Clean up the temp S3 upload regardless of success/failure
+        if event["rfp_source"].startswith("s3-upload:"):
+            s3_key = event["rfp_source"][len("s3-upload:"):]
+            try:
+                s3_client.delete_object(Bucket=TEMP_UPLOADS_BUCKET, Key=s3_key)
+            except Exception:
+                pass
+
+    return {"job_id": job_id}
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -257,7 +355,13 @@ async def submit_rfp(
     rfp_url: Optional[str] = Form(None),
     rfp_file: Optional[UploadFile] = File(None),
 ):
-    """Submit an RFP for processing through the PursuitDocs pipeline."""
+    """
+    Submit an RFP for processing.
+
+    Validates the request and fires an async worker Lambda (production) or runs
+    synchronously (local dev). Returns {job_id} immediately — poll
+    GET /api/status/{job_id} for the result.
+    """
 
     # Rate limiting
     client_ip = request.client.host
@@ -271,72 +375,96 @@ async def submit_rfp(
     if not verify_recaptcha(recaptcha_token):
         raise HTTPException(status_code=403, detail="reCAPTCHA verification failed.")
 
-    # Validate input — need either a URL or a file
+    # Validate input — need either a URL or a file, not both
     if not rfp_url and not rfp_file:
         raise HTTPException(status_code=400, detail="Please provide an RFP URL or upload a PDF file.")
 
     if rfp_url and rfp_file:
         raise HTTPException(status_code=400, detail="Please provide either a URL or a file, not both.")
 
-    # Determine the RFP source
-    tmp_path = None
-    try:
-        if rfp_url:
-            rfp_source = validate_url(rfp_url)
-        else:
-            # Validate file
-            if rfp_file.content_type != "application/pdf":
-                raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+    job_id = str(uuid.uuid4())
 
-            content = await rfp_file.read()
-            size_mb = len(content) / (1024 * 1024)
-            if size_mb > MAX_FILE_SIZE_MB:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"File size ({size_mb:.1f} MB) exceeds the {MAX_FILE_SIZE_MB} MB limit."
-                )
+    # Determine rfp_source
+    if rfp_url:
+        rfp_source = validate_url(rfp_url)
+    else:
+        if rfp_file.content_type != "application/pdf":
+            raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
 
-            # Check PDF magic bytes
-            if not content[:5] == b"%PDF-":
-                raise HTTPException(status_code=400, detail="File does not appear to be a valid PDF.")
+        content = await rfp_file.read()
+        size_mb = len(content) / (1024 * 1024)
+        if size_mb > MAX_FILE_SIZE_MB:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File size ({size_mb:.1f} MB) exceeds the {MAX_FILE_SIZE_MB} MB limit."
+            )
 
-            # Save to temp file
+        if not content[:5] == b"%PDF-":
+            raise HTTPException(status_code=400, detail="File does not appear to be a valid PDF.")
+
+        if ENVIRONMENT == "local":
+            # Save to /tmp — worker runs in the same process
             tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
             tmp.write(content)
             tmp.close()
-            tmp_path = tmp.name
-            rfp_source = tmp_path
+            rfp_source = tmp.name
+        else:
+            # Upload to S3 so the async worker Lambda invocation can read it
+            import io
+            s3_key = f"temp-uploads/{job_id}.pdf"
+            s3_client.upload_fileobj(io.BytesIO(content), TEMP_UPLOADS_BUCKET, s3_key)
+            rfp_source = f"s3-upload:{s3_key}"
 
-        # Run the pipeline
-        initial_state = {
-            "rfp_source": rfp_source,
-            "firm_profile": FIRM_PROFILE,
-            "parsed_rfp": {},
-            "current_draft": "",
-            "review_result": {},
-            "change_log": [],
-            "iteration": 0,
-            "status": "in_progress",
-        }
+    # --- Local dev: run synchronously, store result in memory ---
+    if ENVIRONMENT == "local":
+        try:
+            result = _run_pipeline(rfp_source)
+            local_jobs[job_id] = {"status": "complete", "result": result}
+        except Exception as e:
+            local_jobs[job_id] = {"status": "error", "error": str(e)}
+        finally:
+            if rfp_source and rfp_source.startswith("/tmp/") and os.path.exists(rfp_source):
+                os.unlink(rfp_source)
+        return {"job_id": job_id, "status": local_jobs[job_id]["status"]}
 
-        result = GRAPH.invoke(initial_state)
+    # --- Production: write pending job, fire async worker ---
+    now = int(time.time())
+    jobs_table.put_item(Item={
+        "job_id": job_id,
+        "status": "pending",
+        "created_at": now,
+        "expires_at": now + 86400,  # 24-hour TTL
+    })
 
-        return {
-            "status": result["status"],
-            "iterations": result["iteration"],
-            "final_letter": result["current_draft"],
-            "change_log": result["change_log"],
-            "parsed_rfp": result["parsed_rfp"],
-        }
+    lambda_client.invoke(
+        FunctionName=WORKER_LAMBDA_ARN,
+        InvocationType="Event",  # fire-and-forget — not subject to API GW timeout
+        Payload=json.dumps({"job_id": job_id, "rfp_source": rfp_source}).encode(),
+    )
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Pipeline error: {str(e)}")
-    finally:
-        # Clean up temp file
-        if tmp_path and os.path.exists(tmp_path):
-            os.unlink(tmp_path)
+    return {"job_id": job_id, "status": "pending"}
+
+
+@app.get("/api/status/{job_id}")
+def get_job_status(job_id: str):
+    """Poll for the status and result of a submitted job."""
+    if ENVIRONMENT == "local":
+        item = local_jobs.get(job_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="Job not found.")
+        return {"job_id": job_id, **item}
+
+    response = jobs_table.get_item(Key={"job_id": job_id})
+    item = response.get("Item")
+    if not item:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    return {
+        "job_id": job_id,
+        "status": item["status"],           # pending | processing | complete | error
+        "result": item.get("result"),       # present when complete
+        "error": item.get("error"),         # present when error
+    }
 
 
 @app.post("/api/export-docx")
@@ -365,4 +493,17 @@ async def export_docx(
 # Lambda handler
 # ---------------------------------------------------------------------------
 
-handler = Mangum(app, lifespan="off")
+_mangum_handler = Mangum(app, lifespan="off")
+
+
+def handler(event, context):
+    """
+    Lambda entry point.
+
+    Routes direct worker invocations (fired by the submit endpoint) to
+    _worker_handler. All other events (HTTP traffic from API Gateway) go
+    through FastAPI via Mangum as normal.
+    """
+    if "job_id" in event and "requestContext" not in event and "httpMethod" not in event:
+        return _worker_handler(event, context)
+    return _mangum_handler(event, context)

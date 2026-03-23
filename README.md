@@ -74,6 +74,8 @@ Output: Final Letter + Change Log + Status
 | LLM | Claude Sonnet (Anthropic) |
 | Frontend | React 18 (Vite) + TailwindCSS |
 | Hosting | AWS Amplify (frontend) + API Gateway + Lambda (backend) |
+| Storage | AWS S3 (Chroma DB, firm profile, temp file uploads) |
+| Database | AWS DynamoDB (rate limiting, async job state) |
 | Knowledge base | PCAOB independence standards |
 
 ## Project Structure
@@ -81,8 +83,8 @@ Output: Final Letter + Change Log + Status
 ```
 PursuitDocs/
 ├── backend/
-│   ├── main.py                    # FastAPI application + Lambda handler
-│   ├── requirements.txt
+│   ├── main.py                    # FastAPI application + Lambda handler (HTTP + async worker routing)
+│   ├── backend_requirements.txt
 │   └── graph/
 │       ├── graph.py               # LangGraph graph definition + orchestration
 │       ├── agents/
