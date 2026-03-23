@@ -15,6 +15,11 @@ import argparse
 import json
 import os
 
+# Lambda's bundled SQLite is too old for Chroma — override it with pysqlite3-binary
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 from dotenv import load_dotenv

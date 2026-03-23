@@ -12,6 +12,7 @@ langchain-anthropic
 
 # Vector store
 chromadb
+pysqlite3-binary
 openai
 tiktoken==0.7.0
 
