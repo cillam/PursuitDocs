@@ -74,3 +74,6 @@ data/pcaob_chunks.json
 
 PursuitDocs_Project_Plan.md
 PursuitDocs_Project_Log.md
+DEPLOYMENT_PREP.md
+.claude/
+deploy.sh

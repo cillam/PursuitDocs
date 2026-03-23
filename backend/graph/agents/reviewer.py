@@ -39,7 +39,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from graph.rag.retriever import get_collection, retrieve, format_chunks_for_prompt
 
-ENV_LOC = "../.env"
+ENV_LOC = '../../secrets/pursuitdocs/backend/.env'
 MODEL = "claude-sonnet-4-20250514"
 
 

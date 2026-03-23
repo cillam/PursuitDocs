@@ -1,27 +1,27 @@
 # PursuitDocs
 
-An AI-powered multi-agent system that automates the audit proposal letter process. PursuitDocs takes a Request for Proposal (RFP) for audit services, generates a compliant proposal transmittal letter, and iteratively reviews it for auditor independence issues against PCAOB standards.
+PursuitDocs automates the audit proposal letter process. It takes a Request for Proposal (RFP) for audit services, generates a compliant proposal transmittal letter, and iteratively reviews it for auditor independence issues against PCAOB standards — using a multi-step LLM pipeline with a bounded revision loop.
 
 ## How It Works
 
 1. **Submit an RFP** — Provide a URL or upload a PDF of a public RFP for audit services
 2. **Parser** — Extracts text from the document, then uses an LLM to pull out five structured fields: proposal instructions, submission deadline, purpose/services requested, entity background, addressee, and summary
-3. **Drafter Agent** — Generates a proposal transmittal letter from the parsed RFP and firm profile
-4. **Reviewer Agent** — Scans the draft for independence concerns, retrieves relevant PCAOB standards via RAG, and flags issues with citations and suggested alternatives
+3. **Drafter** — Generates a proposal transmittal letter from the parsed RFP and firm profile
+4. **Reviewer** — Scans the draft for independence concerns, retrieves relevant PCAOB standards via RAG, and flags issues with citations and suggested alternatives
 5. **Revision Loop** — The drafter revises based on findings, the reviewer checks again (max 3 iterations)
 6. **Output** — Final proposal letter + structured change log + status (Ready for Review or Needs Revision)
 
-A human always reviews the final letter. "Ready for Review" means the agent's checks passed. "Needs Revision" means issues remain after 3 passes and the human reviewer needs to do additional work.
+A human always reviews the final letter. "Ready for Review" means the automated checks passed. "Needs Revision" means issues remain after 3 passes and the human reviewer needs to do additional work.
 
-## Why Two Agents?
+## Why a Drafter and a Reviewer?
 
-PursuitDocs separates drafting and reviewing into distinct agents rather than handling both in a single prompt. This is a deliberate design choice rooted in how LLMs perform best — one focused task per agent.
+PursuitDocs separates drafting and reviewing into distinct LLM steps rather than handling both in a single prompt. This is a deliberate design choice rooted in how LLMs perform best — one focused task per call.
 
-LLMs are weak at self-critique. A model that just wrote a sentence is unlikely to flag that same sentence as problematic — it already decided the language was acceptable when it generated it. A separate reviewer agent with its own prompt and its own focus provides a genuine adversarial check, much like how a human writer and a human editor bring different eyes to the same document.
+LLMs are weak at self-critique. A model that just wrote a sentence is unlikely to flag that same sentence as problematic — it already decided the language was acceptable when it generated it. A separate reviewer with its own prompt and its own focus provides a genuine adversarial check, much like how a human writer and a human editor bring different eyes to the same document.
 
-Separating the agents also makes the system independently testable and improvable. The reviewer can be evaluated on its own by giving it letters with known independence issues and measuring whether it catches them. The drafter can be evaluated on its own by checking whether its output is complete and well-structured. If one is underperforming, its prompt can be tuned without affecting the other.
+The separation also makes the system independently testable and improvable. The reviewer can be evaluated on its own by giving it letters with known independence issues and measuring whether it catches them. The drafter can be evaluated on its own by checking whether its output is complete and well-structured. If one is underperforming, its prompt can be tuned without affecting the other.
 
-Finally, the separation is what makes the change log possible. The structured record of what was flagged, why, what standard it violated, and how it was revised only exists because two agents are having a documented exchange. A single agent revising its own output produces no audit trail.
+Finally, the separation is what makes the change log possible. The structured record of what was flagged, why, what standard it violated, and how it was revised only exists because the drafter and reviewer are having a documented exchange. A single LLM revising its own output produces no audit trail.
 
 ## Architecture
 
@@ -41,11 +41,11 @@ RFP (PDF upload or URL)
        └──────────┬───────────┘
                   ▼
           ┌───────────────┐
-          │ Drafter Agent │
+          │    Drafter     │
           └───────┬───────┘
                   ▼
           ┌───────────────┐     ┌─────────────────┐
-          │Reviewer Agent │────→│ PCAOB Standards  │
+          │   Reviewer     │────→│ PCAOB Standards  │
           └───────┬───────┘     │   (Chroma RAG)   │
                   │             └─────────────────┘
              Issues found?
@@ -67,13 +67,15 @@ Output: Final Letter + Change Log + Status
 
 | Component | Technology |
 |---|---|
-| Agent framework | LangChain / LangGraph |
+| Orchestration | LangChain / LangGraph |
 | Backend | FastAPI + Mangum (AWS Lambda) |
 | Vector store | Chroma |
 | Embeddings | OpenAI text-embedding-3-small |
 | LLM | Claude Sonnet (Anthropic) |
 | Frontend | React 18 (Vite) + TailwindCSS |
 | Hosting | AWS Amplify (frontend) + API Gateway + Lambda (backend) |
+| Storage | AWS S3 (Chroma DB, firm profile, temp file uploads) |
+| Database | AWS DynamoDB (rate limiting, async job state) |
 | Knowledge base | PCAOB independence standards |
 
 ## Project Structure
@@ -81,13 +83,13 @@ Output: Final Letter + Change Log + Status
 ```
 PursuitDocs/
 ├── backend/
-│   ├── main.py                    # FastAPI application + Lambda handler
-│   ├── requirements.txt
+│   ├── main.py                    # FastAPI application + Lambda handler (HTTP + async worker routing)
+│   ├── backend_requirements.txt
 │   └── graph/
 │       ├── graph.py               # LangGraph graph definition + orchestration
 │       ├── agents/
-│       │   ├── drafter.py         # Drafter agent
-│       │   └── reviewer.py        # Reviewer agent (two-pass with RAG)
+│       │   ├── drafter.py         # Drafter (initial draft + revisions)
+│       │   └── reviewer.py        # Reviewer (two-pass with RAG)
 │       ├── nodes/
 │       │   └── parser.py          # PDF/HTML extraction + LLM-based RFP parsing
 │       └── rag/
@@ -132,16 +134,16 @@ PursuitDocs/
 ## Future Improvements
 
 - Engagement team integration with real credentials replacing placeholders
+- Drafter retrieval from firm profile — selective lookup based on RFP requirements instead of receiving the full profile
 - Synthetic past engagements for the drafter to reference
 - Pre-pursuit assessment advising partners on engagement fit
-- Word document export of final letter
 - Full proposal generation beyond the transmittal letter
 - Multi-firm support with data isolation
 - Reviewer feedback loop using few-shot examples from past corrections
 
 ## Evaluation
 
-The project includes an evaluation dataset of synthetic proposal letters annotated with independence concerns, reasoning, and PCAOB citations. This is used to measure the reviewer agent's accuracy and the drafter's revision quality.
+The project includes an evaluation dataset of synthetic proposal letters annotated with independence concerns, reasoning, and PCAOB citations. This is used to measure the reviewer's accuracy and the drafter's revision quality.
 
 
 ## PCAOB Standards Usage

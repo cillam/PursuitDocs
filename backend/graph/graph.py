@@ -23,7 +23,7 @@ import argparse
 import json
 import operator
 import os
-from typing import Annotated, Any, Literal
+from typing import Annotated, Literal
 
 from dotenv import load_dotenv
 from langgraph.graph import END, StateGraph
@@ -33,7 +33,7 @@ from graph.agents.drafter import draft_letter, revise_letter
 from graph.agents.reviewer import review_letter
 from graph.nodes.parser import parse
 
-ENV_LOC = "../.env"
+ENV_LOC = '../../secrets/pursuitdocs/backend/.env'
 MAX_ITERATIONS = 3
 
 

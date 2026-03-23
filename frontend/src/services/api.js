@@ -40,12 +40,12 @@ export async function submitRfp({ name, email, purpose, rfpUrl, rfpFile, recaptc
 }
 
 /**
- * Check the status of a running pipeline.
+ * Poll for the status and result of a submitted job.
  *
- * @param {string} jobId - The job ID returned from submitRfp
- * @returns {Promise<Object>} Current status and results if complete
+ * @param {string} jobId
+ * @returns {Promise<{job_id: string, status: string, result?: Object, error?: string}>}
  */
-export async function checkStatus(jobId) {
+export async function getJobStatus(jobId) {
   const response = await api.get(`/status/${jobId}`);
   return response.data;
 }

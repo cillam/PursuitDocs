@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import Header from './components/Header';
 import IntakeForm from './components/IntakeForm';
@@ -6,7 +6,7 @@ import ProgressIndicator from './components/ProgressIndicator';
 import ResultsDisplay from './components/ResultsDisplay';
 import ErrorDisplay from './components/ErrorDisplay';
 import Footer from './components/Footer';
-import { submitRfp } from './services/api';
+import { submitRfp, getJobStatus } from './services/api';
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
 
@@ -17,44 +17,67 @@ function AppContent() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [currentStage, setCurrentStage] = useState('parsing');
-  const [iteration, setIteration] = useState(0);
   const [canRegenerate, setCanRegenerate] = useState(true);
   const [lastSubmission, setLastSubmission] = useState(null);
+  const stageTimers = useRef([]);
+  const pollTimer = useRef(null);
+
+  const clearStageTimers = () => {
+    stageTimers.current.forEach(clearTimeout);
+    stageTimers.current = [];
+  };
+
+  const clearPollTimer = () => {
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
+  };
 
   const handleSubmit = useCallback(async (formData) => {
     setAppState('processing');
     setCurrentStage('parsing');
-    setIteration(0);
     setLastSubmission(formData);
+    clearStageTimers();
+    clearPollTimer();
+
+    // Simulate progress stages while waiting for results.
+    // Timings are approximate — the poll result determines when we finish.
+    stageTimers.current = [
+      setTimeout(() => setCurrentStage('drafting'), 8000),
+      setTimeout(() => setCurrentStage('reviewing'), 20000),
+      setTimeout(() => setCurrentStage('revising'), 40000),
+      setTimeout(() => setCurrentStage('finalizing'), 60000),
+    ];
 
     try {
-      // Simulate stage progression
-      // In a real implementation with WebSocket or polling,
-      // these would update based on actual backend progress
-      const stageTimer = (stage, delay) =>
-        new Promise(resolve => {
-          setTimeout(() => {
-            setCurrentStage(stage);
-            resolve();
-          }, delay);
-        });
+      const { job_id } = await submitRfp(formData);
 
-      // Start the actual API call
-      const apiPromise = submitRfp(formData);
-
-      // Simulate progress stages while waiting
-      // These timings are approximate — the real call determines when we finish
-      stageTimer('drafting', 8000);
-      stageTimer('reviewing', 20000);
-      stageTimer('revising', 40000);
-      stageTimer('finalizing', 60000);
-
-      const data = await apiPromise;
-
-      setResult(data);
-      setAppState('results');
+      pollTimer.current = setInterval(async () => {
+        try {
+          const { status, result, error } = await getJobStatus(job_id);
+          if (status === 'complete') {
+            clearPollTimer();
+            clearStageTimers();
+            setResult(result);
+            setAppState('results');
+          } else if (status === 'error') {
+            clearPollTimer();
+            clearStageTimers();
+            setError(error || 'Pipeline failed. Please try again.');
+            setAppState('error');
+          }
+          // pending | processing — keep polling
+        } catch (pollErr) {
+          clearPollTimer();
+          clearStageTimers();
+          setError('Lost connection while waiting for results. Please try again.');
+          setAppState('error');
+        }
+      }, 4000);
     } catch (err) {
-      console.error('Pipeline error:', err);
+      console.error('Submit error:', err);
+      clearStageTimers();
       const message = err.response?.data?.detail
         || err.response?.data?.error
         || err.message
@@ -71,6 +94,7 @@ function AppContent() {
   }, [lastSubmission, canRegenerate, handleSubmit]);
 
   const handleRetry = useCallback(() => {
+    clearPollTimer();
     setAppState('form');
     setError('');
     setResult(null);
@@ -89,7 +113,6 @@ function AppContent() {
           {appState === 'processing' && (
             <ProgressIndicator
               currentStage={currentStage}
-              iteration={iteration}
             />
           )}
 

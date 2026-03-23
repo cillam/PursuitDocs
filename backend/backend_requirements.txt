@@ -28,3 +28,6 @@ langdetect
 
 # Document export
 python-docx
+
+# AWS (S3 for Chroma + firm profiles, DynamoDB for rate limiting)
+boto3

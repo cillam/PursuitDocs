@@ -35,7 +35,6 @@ import json
 import os
 import re
 import tempfile
-from pathlib import Path
 
 import pdfplumber
 import requests
@@ -45,7 +44,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 from langdetect import detect
 
-ENV_LOC = "../.env"
+ENV_LOC = '../../secrets/pursuitdocs/backend/.env'
 MODEL = "claude-sonnet-4-20250514"
 MAX_PDF_PAGES = 30
 MAX_FILE_SIZE_MB = 10

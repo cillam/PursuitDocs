@@ -19,8 +19,8 @@ import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 from dotenv import load_dotenv
 
-ENV_LOC = "../.env"
-CHROMA_PATH = "../data/chroma_db"
+ENV_LOC = '../../secrets/pursuitdocs/backend/.env'
+CHROMA_PATH = "../data/chroma_db" if os.getenv("ENVIRONMENT", "local") == "local" else "/tmp/chroma_db"
 COLLECTION_NAME = "pcaob_standards"
 EMBEDDING_MODEL = "text-embedding-3-small"
 

@@ -24,13 +24,12 @@ import json
 import os
 import re
 from datetime import date
-from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 
-ENV_LOC = "../.env"
+ENV_LOC = '../../secrets/pursuitdocs/backend/.env'
 MODEL = "claude-sonnet-4-20250514"
 
 
