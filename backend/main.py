@@ -354,6 +354,7 @@ async def submit_rfp(
     recaptcha_token: str = Form(...),
     rfp_url: Optional[str] = Form(None),
     rfp_file: Optional[UploadFile] = File(None),
+    company_website: Optional[str] = Form(None),
 ):
     """
     Submit an RFP for processing.
@@ -370,6 +371,10 @@ async def submit_rfp(
             status_code=429,
             detail="Rate limit exceeded. Please try again later."
         )
+
+    # Honeypot check
+    if company_website:
+        raise HTTPException(status_code=400, detail="Invalid submission.")
 
     # reCAPTCHA verification
     if not verify_recaptcha(recaptcha_token):
