@@ -77,3 +77,5 @@ PursuitDocs_Project_Log.md
 DEPLOYMENT_PREP.md
 .claude/
 deploy.sh
+
+sources/
