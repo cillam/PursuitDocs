@@ -23,7 +23,7 @@ import argparse
 import json
 import operator
 import os
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from dotenv import load_dotenv
 from langgraph.graph import END, StateGraph
@@ -142,6 +142,18 @@ def revision_check_node(state: PursuitDocsState) -> dict:
 # Conditional edge
 # ---------------------------------------------------------------------------
 
+def is_audit_rfp(state: PursuitDocsState) -> Literal["proceed", "not_applicable"]:
+    """Check whether the parsed RFP is actually an audit RFP.
+
+    The LLM parser sets key fields to 'Not specified' when it determines
+    the document is not a legitimate audit RFP.
+    """
+    parsed = state.get("parsed_rfp", {})
+    if parsed.get("purpose_and_services", "").strip().lower() == "not specified":
+        return "not_applicable"
+    return "proceed"
+
+
 def should_continue(state: PursuitDocsState) -> Literal["revise", "ready", "needs_revision"]:
     """Determine what happens after the reviewer runs.
 
@@ -177,6 +189,15 @@ def set_needs_revision(state: PursuitDocsState) -> dict:
     return {"status": "needs_revision"}
 
 
+def set_not_applicable(state: PursuitDocsState) -> dict:
+    """Mark the submission as not applicable — not an audit RFP."""
+    print(f"\n{'='*60}")
+    print("STATUS: Not Applicable (not an audit RFP)")
+    print(f"{'='*60}")
+    explanation = state.get("parsed_rfp", {}).get("summary", "This document does not appear to be a Request for Proposal for audit services.")
+    return {"status": "not_applicable", "current_draft": explanation}
+
+
 # ---------------------------------------------------------------------------
 # Graph construction
 # ---------------------------------------------------------------------------
@@ -192,10 +213,15 @@ def build_graph() -> StateGraph:
     graph.add_node("revision_check", revision_check_node)
     graph.add_node("set_ready", set_ready)
     graph.add_node("set_needs_revision", set_needs_revision)
+    graph.add_node("set_not_applicable", set_not_applicable)
 
     # Add edges
     graph.set_entry_point("parser")
-    graph.add_edge("parser", "drafter")
+    graph.add_conditional_edges(
+        "parser",
+        is_audit_rfp,
+        {"proceed": "drafter", "not_applicable": "set_not_applicable"},
+    )
     graph.add_edge("drafter", "reviewer")
     graph.add_edge("reviewer", "revision_check")
 
@@ -212,6 +238,7 @@ def build_graph() -> StateGraph:
 
     graph.add_edge("set_ready", END)
     graph.add_edge("set_needs_revision", END)
+    graph.add_edge("set_not_applicable", END)
 
     return graph.compile()
 
