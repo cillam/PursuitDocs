@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import Header from './components/Header';
 import IntakeForm from './components/IntakeForm';
 import ProgressIndicator from './components/ProgressIndicator';
@@ -13,6 +13,7 @@ const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
 // App states: 'form' | 'processing' | 'results' | 'error'
 
 function AppContent() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const [appState, setAppState] = useState('form');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -90,8 +91,18 @@ function AppContent() {
   const handleRegenerate = useCallback(async () => {
     if (!lastSubmission || !canRegenerate) return;
     setCanRegenerate(false);
-    await handleSubmit(lastSubmission);
-  }, [lastSubmission, canRegenerate, handleSubmit]);
+
+    let token = 'dev-bypass';
+    if (executeRecaptcha) {
+      try {
+        token = await executeRecaptcha('submit_rfp');
+      } catch {
+        return;
+      }
+    }
+
+    await handleSubmit({ ...lastSubmission, recaptchaToken: token });
+  }, [lastSubmission, canRegenerate, handleSubmit, executeRecaptcha]);
 
   const handleRetry = useCallback(() => {
     clearPollTimer();

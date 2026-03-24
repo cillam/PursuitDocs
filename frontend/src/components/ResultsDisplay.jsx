@@ -8,6 +8,7 @@ export default function ResultsDisplay({ result, onRegenerate, canRegenerate }) 
 
   const { status, iterations, final_letter, change_log, parsed_rfp } = result;
   const isReady = status === 'ready_for_review';
+  const isNotApplicable = status === 'not_applicable';
 
   const handleCopyLetter = async () => {
     try {
@@ -42,6 +43,25 @@ export default function ResultsDisplay({ result, onRegenerate, canRegenerate }) 
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  if (isNotApplicable) {
+    return (
+      <div className="animate-fade-up max-w-lg mx-auto text-center">
+        <div className="card p-8">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+          </div>
+          <h3 className="font-display text-xl text-ink-100 mb-2">Document Not Accepted</h3>
+          <p className="text-ink-400 text-sm mb-6">{final_letter}</p>
+          <button onClick={onRegenerate} className="btn-primary">
+            Submit Another RFP
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-up max-w-3xl mx-auto">
