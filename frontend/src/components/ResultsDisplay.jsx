@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { exportDocx } from '../services/api';
 
-export default function ResultsDisplay({ result, onRegenerate, canRegenerate }) {
+export default function ResultsDisplay({ result, onRegenerate, canRegenerate, onRetry }) {
   const [activeTab, setActiveTab] = useState('letter');
   const [changeLogExpanded, setChangeLogExpanded] = useState(false);
   const [exportingDocx, setExportingDocx] = useState(false);
@@ -55,7 +55,7 @@ export default function ResultsDisplay({ result, onRegenerate, canRegenerate }) 
           </div>
           <h3 className="font-display text-xl text-ink-100 mb-2">Document Not Accepted</h3>
           <p className="text-ink-400 text-sm mb-6">{final_letter}</p>
-          <button onClick={onRegenerate} className="btn-primary">
+          <button onClick={onRetry} className="btn-primary">
             Submit Another RFP
           </button>
         </div>
