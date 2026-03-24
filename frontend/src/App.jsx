@@ -132,6 +132,7 @@ function AppContent() {
               result={result}
               onRegenerate={handleRegenerate}
               canRegenerate={canRegenerate}
+              onRetry={handleRetry}
             />
           )}
 
