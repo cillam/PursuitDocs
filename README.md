@@ -1,6 +1,6 @@
 # PursuitDocs
 
-PursuitDocs automates the audit proposal letter process. It takes a Request for Proposal (RFP) for audit services, generates a compliant proposal transmittal letter, and iteratively reviews it for auditor independence issues against PCAOB standards — using a multi-step LLM pipeline with a bounded revision loop.
+PursuitDocs automates the financial statement audit proposal letter process. It takes a Request for Proposal (RFP) for audit services, generates a compliant proposal transmittal letter, and iteratively reviews it for auditor independence issues against PCAOB standards using a multi-step LLM pipeline with a bounded revision loop.
 
 ## How It Works
 

@@ -169,9 +169,9 @@ export default function IntakeForm({ onSubmit, isLoading }) {
           Generate Your Proposal Letter
         </h2>
         <p className="text-ink-400 max-w-xl mx-auto leading-relaxed">
-          Upload an RFP for audit services and PursuitDocs will draft a compliant
-          proposal transmittal letter, review it for independence concerns, and
-          iteratively revise until it's ready for your review.
+          Upload an RFP for <span className="text-ink-200 font-medium">financial statement audit services</span> and
+          PursuitDocs will draft a compliant proposal transmittal letter, review it
+          for independence concerns, and iteratively revise until it's ready for your review.
         </p>
       </div>
 
@@ -287,7 +287,7 @@ export default function IntakeForm({ onSubmit, isLoading }) {
                 disabled={isLoading}
               />
               <p className="text-ink-600 text-xs mt-1.5">
-                Accepted domains: {ALLOWED_DOMAINS.join(', ')}
+                Financial statement audit RFPs only · Accepted domains: {ALLOWED_DOMAINS.join(', ')}
               </p>
               {errors.rfpUrl && <p className="text-red-400 text-xs mt-1">{errors.rfpUrl}</p>}
             </div>
@@ -322,7 +322,7 @@ export default function IntakeForm({ onSubmit, isLoading }) {
                 ) : (
                   <div className="text-center">
                     <p className="text-ink-400 text-sm">Drop a PDF here or click to browse</p>
-                    <p className="text-ink-600 text-xs mt-1">PDF only, max {MAX_FILE_SIZE_MB} MB</p>
+                    <p className="text-ink-600 text-xs mt-1">Financial statement audit RFPs only · PDF, max {MAX_FILE_SIZE_MB} MB</p>
                   </div>
                 )}
               </label>
