@@ -169,9 +169,9 @@ export default function IntakeForm({ onSubmit, isLoading }) {
           Generate Your Proposal Letter
         </h2>
         <p className="text-ink-400 max-w-xl mx-auto leading-relaxed">
-          Upload an RFP for <span className="text-ink-200 font-medium">financial statement audit services</span> and
-          PursuitDocs will draft a compliant proposal transmittal letter, review it
-          for independence concerns, and iteratively revise until it's ready for your review.
+          Upload an RFP for financial statement audit services and PursuitDocs will
+          draft a compliant proposal transmittal letter, review it for independence
+          concerns, and iteratively revise until it's ready for your review.
         </p>
       </div>
 
