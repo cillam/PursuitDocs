@@ -15,13 +15,9 @@ A human always reviews the final letter. "Ready for Review" means the automated 
 
 ## Why a Drafter and a Reviewer?
 
-PursuitDocs separates drafting and reviewing into distinct LLM steps rather than handling both in a single prompt. This is a deliberate design choice rooted in how LLMs perform best — one focused task per call.
+PursuitDocs separates drafting and reviewing into distinct LLM steps. Keeping them separate means either agent's scope (from transmittal letter to full proposal) can change without affecting the other. A separate reviewer also provides a stronger adversarial check than asking the same model to critique its own output, and each agent can be tested and tuned independently.
 
-LLMs are weak at self-critique. A model that just wrote a sentence is unlikely to flag that same sentence as problematic — it already decided the language was acceptable when it generated it. A separate reviewer with its own prompt and its own focus provides a genuine adversarial check, much like how a human writer and a human editor bring different eyes to the same document.
-
-The separation also makes the system independently testable and improvable. The reviewer can be evaluated on its own by giving it letters with known independence issues and measuring whether it catches them. The drafter can be evaluated on its own by checking whether its output is complete and well-structured. If one is underperforming, its prompt can be tuned without affecting the other.
-
-Finally, the separation is what makes the change log possible. The structured record of what was flagged, why, what standard it violated, and how it was revised only exists because the drafter and reviewer are having a documented exchange. A single LLM revising its own output produces no audit trail.
+The separation makes the change log a natural byproduct of the architecture; the structured record of what was flagged, why, and how it was revised emerges from the two agents having a documented exchange.
 
 ## Architecture
 
@@ -141,9 +137,9 @@ PursuitDocs/
 - Multi-firm support with data isolation
 - Reviewer feedback loop using few-shot examples from past corrections
 
-## Evaluation
+## Evaluation (in progress)
 
-The project includes an evaluation dataset of synthetic proposal letters annotated with independence concerns, reasoning, and PCAOB citations. This is used to measure the reviewer's accuracy and the drafter's revision quality.
+The project will include an evaluation dataset of synthetic proposal letters annotated with independence concerns, reasoning, and PCAOB citations. This will be used to measure the reviewer's accuracy and the drafter's revision quality.
 
 
 ## PCAOB Standards Usage
