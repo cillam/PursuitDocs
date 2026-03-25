@@ -16,6 +16,7 @@ from unittest.mock import MagicMock
 # ── Must happen before main.py is imported ────────────────────────────────────
 
 os.environ["ENVIRONMENT"] = "local"
+os.environ["RECAPTCHA_SECRET_KEY"] = ""  # disable reCAPTCHA verification in tests
 
 # Create a temp firm profile and point the env var at it
 _profile = {
@@ -46,9 +47,14 @@ _mock_graph_instance.invoke.return_value = {
 }
 _mock_build_graph = MagicMock(return_value=_mock_graph_instance)
 
+_mock_export = MagicMock()
+_mock_export.letter_to_docx.return_value = b"PK\x03\x04fake_docx_bytes"
+_mock_graph_utils = MagicMock()
+_mock_graph_utils.export = _mock_export
+
 sys.modules["graph"] = MagicMock(build_graph=_mock_build_graph)
-# Pre-configure the export utility mock so /api/export-docx has bytes to return
-sys.modules["graph"].utils.export.letter_to_docx.return_value = b"PK\x03\x04fake_docx_bytes"
+sys.modules["graph.utils"] = _mock_graph_utils
+sys.modules["graph.utils.export"] = _mock_export
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -77,24 +83,3 @@ def client():
 def mock_graph():
     """Return the mock graph instance so tests can override return values."""
     return _mock_graph_instance
-
-
-# ── Shared test data ──────────────────────────────────────────────────────────
-
-VALID_URL = "https://example.gov/rfp-audit-services.pdf"
-
-VALID_FORM = {
-    "name": "Jane Smith",
-    "email": "jane@testfirm.com",
-    "purpose": "Evaluating the tool for our firm",
-    "recaptcha_token": "test-token",
-    "rfp_url": VALID_URL,
-}
-
-# Minimal valid PDF (passes the b"%PDF-" magic byte check)
-MINIMAL_PDF = (
-    b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
-    b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
-    b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n"
-    b"xref\n0 4\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n0\n%%EOF"
-)

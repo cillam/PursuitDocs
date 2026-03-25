@@ -34,7 +34,7 @@ describe('submitRfp', () => {
       recaptchaToken: 'test-token',
     })
 
-    expect(getInstance().post).toHaveBeenCalledWith('/submit', expect.any(FormData))
+    expect(getInstance().post).toHaveBeenCalledWith('/submit', expect.any(FormData), expect.objectContaining({ headers: { 'Content-Type': 'multipart/form-data' } }))
     expect(result).toEqual({ job_id: 'abc-123', status: 'pending' })
   })
 

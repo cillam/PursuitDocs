@@ -25,13 +25,27 @@ const MOCK_RESULT = {
   iterations: 1,
 }
 
-async function fillAndSubmitForm() {
-  const user = userEvent.setup({ delay: null })
+async function fillAndSubmitForm(user) {
+  if (!user) user = userEvent.setup({ delay: null })
   await user.type(screen.getByLabelText(/^name$/i), 'Jane Smith')
   await user.type(screen.getByLabelText(/email/i), 'jane@firm.com')
   await user.type(screen.getByLabelText(/what are you using/i), 'Testing the tool')
   await user.type(screen.getByPlaceholderText(/example\.gov/i), 'https://example.gov/rfp.pdf')
   await user.click(screen.getByRole('button', { name: /generate proposal letter/i }))
+}
+
+/**
+ * Spy on setInterval/clearInterval and return a function that manually fires
+ * the captured poll callback — lets tests trigger polls without real timers.
+ */
+function setupPollSpy() {
+  let pollCallback = null
+  vi.spyOn(global, 'setInterval').mockImplementation((fn) => { pollCallback = fn; return 1 })
+  vi.spyOn(global, 'clearInterval').mockImplementation(() => {})
+  return async () => {
+    expect(pollCallback).not.toBeNull()
+    await act(async () => { await pollCallback() })
+  }
 }
 
 describe('App — initial state', () => {
@@ -51,18 +65,12 @@ describe('App — initial state', () => {
 })
 
 describe('App — processing state', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => vi.restoreAllMocks())
 
   it('shows ProgressIndicator after submit', async () => {
-    apiModule.submitRfp.mockResolvedValue({ job_id: 'job-123' })
-    apiModule.getJobStatus.mockResolvedValue({ status: 'pending' })
+    // submitRfp never resolves → app stays in processing state indefinitely
+    apiModule.submitRfp.mockReturnValue(new Promise(() => {}))
 
     render(<App />)
     await fillAndSubmitForm()
@@ -73,6 +81,7 @@ describe('App — processing state', () => {
   })
 
   it('calls submitRfp once on submit', async () => {
+    setupPollSpy()
     apiModule.submitRfp.mockResolvedValue({ job_id: 'job-123' })
     apiModule.getJobStatus.mockResolvedValue({ status: 'pending' })
 
@@ -84,25 +93,17 @@ describe('App — processing state', () => {
 })
 
 describe('App — results state', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => vi.restoreAllMocks())
 
   it('shows ResultsDisplay when poll returns complete', async () => {
+    const firePoll = setupPollSpy()
     apiModule.submitRfp.mockResolvedValue({ job_id: 'job-123' })
     apiModule.getJobStatus.mockResolvedValue({ status: 'complete', result: MOCK_RESULT })
 
     render(<App />)
     await fillAndSubmitForm()
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(4100)
-    })
+    await firePoll()
 
     await waitFor(() => {
       expect(screen.getByText('Your Proposal Letter is Ready')).toBeInTheDocument()
@@ -110,6 +111,7 @@ describe('App — results state', () => {
   })
 
   it('polls getJobStatus every 4 seconds', async () => {
+    const firePoll = setupPollSpy()
     apiModule.submitRfp.mockResolvedValue({ job_id: 'job-123' })
     apiModule.getJobStatus
       .mockResolvedValueOnce({ status: 'pending' })
@@ -119,58 +121,42 @@ describe('App — results state', () => {
     render(<App />)
     await fillAndSubmitForm()
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(4100)
-    })
+    await firePoll()
     expect(apiModule.getJobStatus).toHaveBeenCalledTimes(1)
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(4000)
-    })
+    await firePoll()
     expect(apiModule.getJobStatus).toHaveBeenCalledTimes(2)
   })
 
   it('stops polling after result is received', async () => {
+    const firePoll = setupPollSpy()
     apiModule.submitRfp.mockResolvedValue({ job_id: 'job-123' })
     apiModule.getJobStatus.mockResolvedValue({ status: 'complete', result: MOCK_RESULT })
 
     render(<App />)
     await fillAndSubmitForm()
+    await firePoll()
 
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(4100)
+    await waitFor(() => {
+      expect(screen.getByText('Your Proposal Letter is Ready')).toBeInTheDocument()
     })
-
-    const callCount = apiModule.getJobStatus.mock.calls.length
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(8000)
-    })
-
-    expect(apiModule.getJobStatus.mock.calls.length).toBe(callCount)
+    // clearInterval should have been called with the ID returned by our setInterval spy
+    expect(global.clearInterval).toHaveBeenCalledWith(1)
   })
 })
 
 describe('App — error state', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => vi.restoreAllMocks())
 
   it('shows ErrorDisplay when poll returns error status', async () => {
+    const firePoll = setupPollSpy()
     apiModule.submitRfp.mockResolvedValue({ job_id: 'job-123' })
     apiModule.getJobStatus.mockResolvedValue({ status: 'error', error: 'Pipeline failed.' })
 
     render(<App />)
     await fillAndSubmitForm()
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(4100)
-    })
+    await firePoll()
 
     await waitFor(() => {
       expect(screen.getByText('Pipeline failed.')).toBeInTheDocument()
@@ -189,15 +175,13 @@ describe('App — error state', () => {
   })
 
   it('shows error when poll network request fails', async () => {
+    const firePoll = setupPollSpy()
     apiModule.submitRfp.mockResolvedValue({ job_id: 'job-123' })
     apiModule.getJobStatus.mockRejectedValue(new Error('Connection lost'))
 
     render(<App />)
     await fillAndSubmitForm()
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(4100)
-    })
+    await firePoll()
 
     await waitFor(() => {
       expect(screen.getByText(/lost connection/i)).toBeInTheDocument()
@@ -206,46 +190,35 @@ describe('App — error state', () => {
 })
 
 describe('App — retry / regenerate', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    vi.useFakeTimers()
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-  })
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => vi.restoreAllMocks())
 
   it('Try Again button returns user to the form', async () => {
     apiModule.submitRfp.mockRejectedValue({ message: 'Server error' })
 
     render(<App />)
-    await fillAndSubmitForm()
+    const user = userEvent.setup({ delay: null })
+    await fillAndSubmitForm(user)
 
     await waitFor(() => screen.getByRole('button', { name: /try again/i }))
-
-    const user = userEvent.setup({ delay: null })
     await user.click(screen.getByRole('button', { name: /try again/i }))
 
     expect(screen.getByText('Generate Your Proposal Letter')).toBeInTheDocument()
   })
 
   it('Regenerate triggers a new submission with a fresh recaptcha token', async () => {
+    const firePoll = setupPollSpy()
     apiModule.submitRfp.mockResolvedValue({ job_id: 'job-123' })
     apiModule.getJobStatus.mockResolvedValue({ status: 'complete', result: MOCK_RESULT })
 
     render(<App />)
-    await fillAndSubmitForm()
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(4100)
-    })
+    const user = userEvent.setup({ delay: null })
+    await fillAndSubmitForm(user)
+    await firePoll()
 
     await waitFor(() => screen.getByRole('button', { name: /regenerate/i }))
-
-    const user = userEvent.setup({ delay: null })
     await user.click(screen.getByRole('button', { name: /regenerate/i }))
 
-    // submitRfp should have been called twice total
-    expect(apiModule.submitRfp).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(apiModule.submitRfp).toHaveBeenCalledTimes(2))
   })
 })

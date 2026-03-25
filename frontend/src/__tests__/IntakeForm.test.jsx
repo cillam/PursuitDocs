@@ -151,7 +151,9 @@ describe('IntakeForm — file validation', () => {
 
     const file = new File(['fake content'], 'doc.docx', { type: 'application/msword' })
     const input = document.querySelector('input[type="file"]')
-    await user.upload(input, file)
+    // fireEvent bypasses userEvent's accept-attribute filter, simulating a user
+    // who submits a non-PDF despite the file picker restriction
+    fireEvent.change(input, { target: { files: [file] } })
 
     expect(screen.getByText(/only PDF/i)).toBeInTheDocument()
   })
