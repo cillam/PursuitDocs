@@ -11,7 +11,25 @@ returns True — it's tested separately in test_validation.py.
 """
 
 import pytest
-from conftest import VALID_URL, VALID_FORM, MINIMAL_PDF
+
+VALID_URL = "https://example.gov/rfp-audit-services.pdf"
+
+VALID_FORM = {
+    "name": "Jane Smith",
+    "email": "jane@testfirm.com",
+    "purpose": "Evaluating the tool for our firm",
+    "recaptcha_token": "test-token",
+    "rfp_url": VALID_URL,
+    "company_website": "",  # honeypot — must be empty for valid submissions
+}
+
+# Minimal valid PDF (passes the b"%PDF-" magic byte check)
+MINIMAL_PDF = (
+    b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+    b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+    b"3 0 obj<</Type/Page/MediaBox[0 0 612 792]/Parent 2 0 R>>endobj\n"
+    b"xref\n0 4\ntrailer<</Size 4/Root 1 0 R>>\nstartxref\n0\n%%EOF"
+)
 
 
 # ── /api/health ───────────────────────────────────────────────────────────────

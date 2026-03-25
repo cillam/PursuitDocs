@@ -175,7 +175,7 @@ export default function IntakeForm({ onSubmit, isLoading }) {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="card p-8 max-w-2xl mx-auto space-y-6">
+      <form onSubmit={handleSubmit} className="card p-8 max-w-2xl mx-auto space-y-6" noValidate>
         {/* Honeypot — hidden from humans */}
         <div className="absolute opacity-0 pointer-events-none" aria-hidden="true" tabIndex={-1}>
           <label htmlFor="company_website">Company Website</label>
