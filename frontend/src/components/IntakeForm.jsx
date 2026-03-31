@@ -324,7 +324,7 @@ export default function IntakeForm({ onSubmit, isLoading }) {
                   <div className="text-center">
                     <p className="text-ink-400 text-sm">Drop a PDF here or click to browse</p>
                     <p className="text-ink-600 text-xs mt-0.5">Financial statement audit RFPs only · max {MAX_FILE_SIZE_MB} MB</p>
-                    <p className="text-ink-600 text-xs mt-1">PDF must have selectable text. Scanned image PDFs are not supported.</p>
+                    <p className="text-ink-600 text-xs mt-0.5">PDF must have selectable text. Scanned image PDFs are not supported.</p>
                   </div>
                 )}
               </label>
