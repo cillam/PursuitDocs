@@ -286,9 +286,10 @@ export default function IntakeForm({ onSubmit, isLoading }) {
                 placeholder="https://example.gov/rfp-audit-services.pdf"
                 disabled={isLoading}
               />
-              <p className="text-ink-600 text-xs mt-1.5">
+              <p className="text-brass-500 text-xs mt-1.5">
                 Financial statement audit RFPs only · Accepted domains: {ALLOWED_DOMAINS.join(', ')}
               </p>
+              <p className="text-brass-500 text-xs mt-1.5">PDF must have selectable text. Scanned image PDFs are not supported.</p>
               {errors.rfpUrl && <p className="text-red-400 text-xs mt-1">{errors.rfpUrl}</p>}
             </div>
           ) : (
@@ -322,7 +323,8 @@ export default function IntakeForm({ onSubmit, isLoading }) {
                 ) : (
                   <div className="text-center">
                     <p className="text-ink-400 text-sm">Drop a PDF here or click to browse</p>
-                    <p className="text-ink-600 text-xs mt-1">Financial statement audit RFPs only · PDF with selectable text (no scanned images) · max {MAX_FILE_SIZE_MB} MB</p>
+                    <p className="text-ink-600 text-xs mt-0.5">Financial statement audit RFPs only · max {MAX_FILE_SIZE_MB} MB</p>
+                    <p className="text-ink-600 text-xs mt-0.5">PDF must have selectable text. Scanned image PDFs are not supported.</p>
                   </div>
                 )}
               </label>
