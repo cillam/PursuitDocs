@@ -14,7 +14,7 @@ langchain-anthropic
 chromadb
 pysqlite3-binary
 openai
-tiktoken==0.7.0
+tiktoken
 
 # PDF extraction
 pdfplumber
