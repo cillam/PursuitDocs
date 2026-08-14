@@ -296,7 +296,7 @@ def parse_rfp(text: str) -> dict:
     
     Returns a dict with the five parser fields.
     """
-    llm = ChatAnthropic(model=MODEL, temperature=0, max_tokens=4096)
+    llm = ChatAnthropic(model=MODEL, max_tokens=4096)
     
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),

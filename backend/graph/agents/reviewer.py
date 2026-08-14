@@ -137,7 +137,7 @@ def pass_1_identify(letter: str) -> tuple[list[dict], list]:
     Returns:
         A tuple of (findings list, message history for pass 2)
     """
-    llm = ChatAnthropic(model=MODEL, temperature=0, max_tokens=4096)
+    llm = ChatAnthropic(model=MODEL, max_tokens=4096)
 
     messages = [
         SystemMessage(content=PASS_1_SYSTEM),

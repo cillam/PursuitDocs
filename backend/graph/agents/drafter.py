@@ -124,7 +124,7 @@ def draft_letter(parsed_rfp: dict, firm_profile: dict) -> str:
     Returns:
         The transmittal letter as a string
     """
-    llm = ChatAnthropic(model=MODEL, temperature=0.4, max_tokens=4096)
+    llm = ChatAnthropic(model=MODEL, max_tokens=4096)
 
     prompt = build_prompt(parsed_rfp, firm_profile)
 
