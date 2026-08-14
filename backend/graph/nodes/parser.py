@@ -291,9 +291,26 @@ Respond ONLY with valid JSON matching this exact structure. Do not include any o
 If a field cannot be determined from the RFP, use "Not specified" as the value. For the addressee and proposal_instructions, use "Not specified" for any subfield that cannot be determined. If you believe the RFP to not be a legitimate request for audit services, every field should use "Not specified", except for the summary, which you should use to add an explanation of your reasoning why the RFP may not be legitimate. Such an explanation should be limited to fewer than 50 words."""
 
 
+def _extract_text(content) -> str:
+    """Extract the response text from a ChatAnthropic message's .content.
+
+    With adaptive thinking on by default, Claude Sonnet 5 responses come
+    back as multiple content blocks (thinking + text), so LangChain
+    represents .content as a list of block dicts instead of a plain
+    string. Concatenate just the text blocks, skipping thinking blocks.
+    """
+    if isinstance(content, str):
+        return content
+    return "".join(
+        block.get("text", "")
+        for block in content
+        if isinstance(block, dict) and block.get("type") == "text"
+    )
+
+
 def parse_rfp(text: str) -> dict:
     """Send extracted RFP text to Claude for structured extraction.
-    
+
     Returns a dict with the five parser fields.
     """
     llm = ChatAnthropic(model=MODEL, max_tokens=4096)
@@ -304,9 +321,9 @@ def parse_rfp(text: str) -> dict:
     ]
     
     response = llm.invoke(messages)
-    
+
     # Parse the JSON response
-    response_text = response.content.strip()
+    response_text = _extract_text(response.content).strip()
     
     # Remove markdown code fences if present (just in case)
     response_text = re.sub(r'^```json\s*', '', response_text)

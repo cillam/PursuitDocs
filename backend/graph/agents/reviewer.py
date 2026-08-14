@@ -131,6 +131,23 @@ If after reviewing the standards you determine none of your original findings re
 # Review passes
 # ---------------------------------------------------------------------------
 
+def _extract_text(content) -> str:
+    """Extract the response text from a ChatAnthropic message's .content.
+
+    With adaptive thinking on by default, Claude Sonnet 5 responses come
+    back as multiple content blocks (thinking + text), so LangChain
+    represents .content as a list of block dicts instead of a plain
+    string. Concatenate just the text blocks, skipping thinking blocks.
+    """
+    if isinstance(content, str):
+        return content
+    return "".join(
+        block.get("text", "")
+        for block in content
+        if isinstance(block, dict) and block.get("type") == "text"
+    )
+
+
 def pass_1_identify(letter: str) -> tuple[list[dict], list]:
     """Pass 1: Identify potential independence concerns in the letter.
 
@@ -145,7 +162,7 @@ def pass_1_identify(letter: str) -> tuple[list[dict], list]:
     ]
 
     response = llm.invoke(messages)
-    response_text = response.content.strip()
+    response_text = _extract_text(response.content).strip()
 
     # Clean markdown fences if present
     response_text = re.sub(r'^```json\s*', '', response_text)
@@ -180,7 +197,7 @@ def pass_2_cite(
     if not findings:
         return {"findings": [], "status": "clean"}
 
-    llm = ChatAnthropic(model=MODEL, temperature=0, max_tokens=4096)
+    llm = ChatAnthropic(model=MODEL, max_tokens=4096)
 
     # Retrieve relevant standards for each finding
     retrieval_sections = []
@@ -216,7 +233,7 @@ def pass_2_cite(
     ]
 
     response = llm.invoke(messages)
-    response_text = response.content.strip()
+    response_text = _extract_text(response.content).strip()
 
     # Clean markdown fences if present
     response_text = re.sub(r'^```json\s*', '', response_text)

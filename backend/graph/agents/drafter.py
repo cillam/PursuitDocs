@@ -78,6 +78,23 @@ Output only the letter text, ready to be placed on firm letterhead."""
 # Letter generation
 # ---------------------------------------------------------------------------
 
+def _extract_text(content) -> str:
+    """Extract the response text from a ChatAnthropic message's .content.
+
+    With adaptive thinking on by default, Claude Sonnet 5 responses come
+    back as multiple content blocks (thinking + text), so LangChain
+    represents .content as a list of block dicts instead of a plain
+    string. Concatenate just the text blocks, skipping thinking blocks.
+    """
+    if isinstance(content, str):
+        return content
+    return "".join(
+        block.get("text", "")
+        for block in content
+        if isinstance(block, dict) and block.get("type") == "text"
+    )
+
+
 def build_prompt(parsed_rfp: dict, firm_profile: dict) -> str:
     """Build the human message content from the parsed RFP and firm profile.
 
@@ -135,7 +152,7 @@ def draft_letter(parsed_rfp: dict, firm_profile: dict) -> str:
 
     response = llm.invoke(messages)
 
-    return response.content.strip()
+    return _extract_text(response.content).strip()
 
 
 def revise_letter(
@@ -161,7 +178,7 @@ def revise_letter(
     Returns:
         The revised letter as a string
     """
-    llm = ChatAnthropic(model=MODEL, temperature=0.3, max_tokens=4096)
+    llm = ChatAnthropic(model=MODEL, max_tokens=4096)
 
     sections = []
 
@@ -213,7 +230,7 @@ def revise_letter(
 
     response = llm.invoke(messages)
 
-    return response.content.strip()
+    return _extract_text(response.content).strip()
 
 
 # ---------------------------------------------------------------------------
