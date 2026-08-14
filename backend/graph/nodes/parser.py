@@ -45,7 +45,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langdetect import detect
 
 ENV_LOC = '../../secrets/pursuitdocs/backend/.env'
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-sonnet-5"
 MAX_PDF_PAGES = 30
 MAX_FILE_SIZE_MB = 10
 MIN_TEXT_LENGTH = 500
